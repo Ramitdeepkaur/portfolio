@@ -21,6 +21,7 @@
         <java.version>17</java.version>
         <springdoc.version>2.5.0</springdoc.version>
         <commons-csv.version>1.10.0</commons-csv.version>
+        <yahoo-finance-api.version>3.17.0</yahoo-finance-api.version>
     </properties>
 
     <dependencies>
@@ -62,6 +63,13 @@
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-csv</artifactId>
             <version>${commons-csv.version}</version>
+        </dependency>
+
+        <!-- Yahoo Finance live market data -->
+        <dependency>
+            <groupId>com.yahoofinance-api</groupId>
+            <artifactId>YahooFinanceAPI</artifactId>
+            <version>${yahoo-finance-api.version}</version>
         </dependency>
 
         <!-- DevTools & Utilities -->
