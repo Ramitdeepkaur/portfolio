@@ -41,3 +41,15 @@ CREATE TABLE IF NOT EXISTS portfolio_snapshots (
     profit_loss DECIMAL(15, 2) NOT NULL,
     snapshot_date DATE NOT NULL
 );
+
+-- TABLE 4: Transactions
+CREATE TABLE IF NOT EXISTS transactions (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    holding VARCHAR(255) NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    quantity DOUBLE NOT NULL,
+    price DECIMAL(15, 2) NOT NULL,
+    amount DECIMAL(18, 2) NOT NULL,
+    date DATE NOT NULL,
+    notes VARCHAR(500)
+);

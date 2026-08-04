@@ -1,6 +1,8 @@
 package com.portfolio.manager.controller;
 
+import com.portfolio.manager.dto.FilterOptionsDTO;
 import com.portfolio.manager.dto.HoldingResponseDTO;
+import com.portfolio.manager.dto.HoldingSearchCriteria;
 import com.portfolio.manager.entity.Holding;
 import com.portfolio.manager.service.CsvExportImportService;
 import com.portfolio.manager.service.HoldingService;
@@ -14,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -39,6 +42,41 @@ public class HoldingController {
     @Operation(summary = "Get holding details by ID")
     public ResponseEntity<HoldingResponseDTO> getHoldingById(@PathVariable Long id) {
         return ResponseEntity.ok(holdingService.getHoldingById(id));
+    }
+
+    @GetMapping("/search")
+    @Operation(summary = "Search and filter holdings")
+    public ResponseEntity<List<HoldingResponseDTO>> searchHoldings(
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false) List<String> assetType,
+            @RequestParam(required = false) List<String> sector,
+            @RequestParam(required = false) BigDecimal minValue,
+            @RequestParam(required = false) BigDecimal maxValue,
+            @RequestParam(required = false) BigDecimal minGain,
+            @RequestParam(required = false) BigDecimal maxGain,
+            @RequestParam(defaultValue = "currentValue") String sortBy,
+            @RequestParam(defaultValue = "DESC") String order,
+            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(defaultValue = "20") Integer size) {
+        HoldingSearchCriteria criteria = new HoldingSearchCriteria();
+        criteria.setQuery(query);
+        criteria.setAssetTypes(assetType);
+        criteria.setSectors(sector);
+        criteria.setMinValue(minValue);
+        criteria.setMaxValue(maxValue);
+        criteria.setMinGain(minGain);
+        criteria.setMaxGain(maxGain);
+        criteria.setSortBy(sortBy);
+        criteria.setOrder(order);
+        criteria.setPage(page);
+        criteria.setSize(size);
+        return ResponseEntity.ok(holdingService.searchHoldings(criteria));
+    }
+
+    @GetMapping("/filters/options")
+    @Operation(summary = "Get available filter values for holdings")
+    public ResponseEntity<FilterOptionsDTO> getFilterOptions() {
+        return ResponseEntity.ok(holdingService.getFilterOptions());
     }
 
     @PostMapping
