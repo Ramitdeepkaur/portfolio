@@ -4,69 +4,75 @@ import com.portfolio.manager.dto.HistoricalPricePointDTO;
 import com.portfolio.manager.dto.MarketDataDTO;
 import com.portfolio.manager.entity.MarketData;
 import com.portfolio.manager.repository.MarketDataRepository;
-import yahoofinance.Stock;
-import yahoofinance.YahooFinance;
-import yahoofinance.histquotes.HistoricalQuote;
-import yahoofinance.histquotes.Interval;
-import yahoofinance.quotes.stock.StockQuote;
-
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.List;
-import java.util.Locale;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 public class MarketDataService {
 
-    private static final int HISTORY_LIMIT = 220;
-
     private final MarketDataRepository marketDataRepository;
-    private final Object creationLock = new Object();
+    private final Map<String, BigDecimal> defaultPrices = new HashMap<>();
 
     public MarketDataService(MarketDataRepository marketDataRepository) {
         this.marketDataRepository = marketDataRepository;
+        initializeDefaults();
+    }
+
+    private void initializeDefaults() {
+        defaultPrices.put("AAPL", new BigDecimal("185.50"));
+        defaultPrices.put("MSFT", new BigDecimal("420.20"));
+        defaultPrices.put("GOOGL", new BigDecimal("175.80"));
+        defaultPrices.put("AMZN", new BigDecimal("182.40"));
+        defaultPrices.put("NVDA", new BigDecimal("125.60"));
+        defaultPrices.put("TSLA", new BigDecimal("248.50"));
+        defaultPrices.put("SPY", new BigDecimal("545.30"));
+        defaultPrices.put("QQQ", new BigDecimal("480.10"));
+        defaultPrices.put("VTI", new BigDecimal("260.40"));
+        defaultPrices.put("BND", new BigDecimal("72.50"));
+        defaultPrices.put("CASH", new BigDecimal("1.00"));
     }
 
     public MarketData getOrCreateMarketData(String tickerSymbol) {
-        String ticker = normalizeTicker(tickerSymbol);
+        String ticker = tickerSymbol.toUpperCase().trim();
         Optional<MarketData> existing = marketDataRepository.findByTickerSymbolIgnoreCase(ticker);
         if (existing.isPresent()) {
             return existing.get();
         }
 
-        // Only synchronize the rare "ticker doesn't exist yet" path: concurrent requests for the
-        // same brand-new ticker would otherwise all pass the check above and race to insert it,
-        // tripping the unique constraint on ticker_symbol.
-        synchronized (creationLock) {
-            existing = marketDataRepository.findByTickerSymbolIgnoreCase(ticker);
-            if (existing.isPresent()) {
-                return existing.get();
-            }
+        BigDecimal price = defaultPrices.getOrDefault(ticker, generateRandomPrice(ticker));
+        BigDecimal open = price.multiply(new BigDecimal("0.992")).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal high = price.multiply(new BigDecimal("1.015")).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal low = price.multiply(new BigDecimal("0.985")).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal close = price.multiply(new BigDecimal("0.998")).setScale(2, RoundingMode.HALF_UP);
 
-            MarketData fetched = fetchCurrentMarketData(ticker);
-            try {
-                return marketDataRepository.save(fetched);
-            } catch (DataIntegrityViolationException ex) {
-                return marketDataRepository.findByTickerSymbolIgnoreCase(ticker)
-                        .orElseThrow(() -> ex);
-            }
+        MarketData data = new MarketData(
+                null,
+                ticker,
+                price,
+                open,
+                close,
+                high,
+                low,
+                15420000L + (long)(Math.abs(ticker.hashCode()) % 50000000),
+                LocalDateTime.now()
+        );
+
+        try {
+            return marketDataRepository.save(data);
+        } catch (DataIntegrityViolationException ex) {
+            return marketDataRepository.findByTickerSymbolIgnoreCase(ticker)
+                    .orElseThrow(() -> ex);
         }
     }
 
     public MarketDataDTO getMarketDataDTO(String tickerSymbol, String timeframe) {
-        String ticker = normalizeTicker(tickerSymbol);
-        MarketData marketData = refreshCurrentMarketData(ticker);
-
+        MarketData marketData = getOrCreateMarketData(tickerSymbol);
         MarketDataDTO dto = new MarketDataDTO();
         dto.setTickerSymbol(marketData.getTickerSymbol());
         dto.setCurrentPrice(marketData.getCurrentPrice());
@@ -77,131 +83,29 @@ public class MarketDataService {
         dto.setVolume(marketData.getVolume());
         dto.setLastUpdated(marketData.getLastUpdated());
 
-        BigDecimal openingPrice = marketData.getOpeningPrice();
-        BigDecimal currentPrice = marketData.getCurrentPrice();
-        BigDecimal change = currentPrice.subtract(openingPrice);
+        BigDecimal change = marketData.getCurrentPrice().subtract(marketData.getOpeningPrice());
         dto.setChangeAmount(change.setScale(2, RoundingMode.HALF_UP));
 
         BigDecimal pct = BigDecimal.ZERO;
-        if (openingPrice != null && openingPrice.compareTo(BigDecimal.ZERO) > 0) {
+        if (marketData.getOpeningPrice().compareTo(BigDecimal.ZERO) > 0) {
             pct = change.multiply(new BigDecimal("100"))
-                    .divide(openingPrice, 2, RoundingMode.HALF_UP);
+                    .divide(marketData.getOpeningPrice(), 2, RoundingMode.HALF_UP);
         }
         dto.setChangePercentage(pct);
 
-        dto.setHistory(generateHistoryPoints(ticker, timeframe));
+        dto.setHistory(generateHistoryPoints(marketData.getTickerSymbol(), marketData.getCurrentPrice(), timeframe));
         return dto;
     }
 
-    public List<HistoricalPricePointDTO> generateHistoryPoints(String ticker, String range) {
-        String normalizedTicker = normalizeTicker(ticker);
-        Calendar from = calculateFrom(range);
-        Calendar to = Calendar.getInstance();
-        Interval interval = determineInterval(range);
+    public List<HistoricalPricePointDTO> generateHistoryPoints(String ticker, BigDecimal currentPrice, String range) {
+        int days = switch (range != null ? range.toLowerCase() : "1m") {
+            case "1w", "7d" -> 7;
+            case "6m" -> 180;
+            case "1y" -> 365;
+            case "5y" -> 1825;
+            default -> 30; // 1m
+        };
 
-        try {
-            Stock stock = YahooFinance.get(normalizedTicker, true);
-            List<HistoricalQuote> quotes = stock.getHistory(from, to, interval);
-            List<HistoricalPricePointDTO> history = new ArrayList<>();
-
-            if (quotes != null) {
-                for (HistoricalQuote quote : quotes) {
-                    if (quote == null || quote.getDate() == null) {
-                        continue;
-                    }
-                    history.add(new HistoricalPricePointDTO(
-                            LocalDate.ofInstant(quote.getDate().toInstant(), ZoneId.systemDefault()),
-                            defaultBigDecimal(quote.getOpen()),
-                            defaultBigDecimal(quote.getClose()),
-                            defaultBigDecimal(quote.getHigh()),
-                            defaultBigDecimal(quote.getLow()),
-                            quote.getVolume()
-                    ));
-                }
-            }
-
-            if (!history.isEmpty()) {
-                return trimHistory(history);
-            }
-        } catch (IOException ex) {
-            // Fall through to synthetic history below.
-        }
-
-        MarketData fallback = marketDataRepository.findByTickerSymbolIgnoreCase(normalizedTicker)
-                .orElseGet(() -> fetchCurrentMarketData(normalizedTicker));
-        return generateFallbackHistory(normalizedTicker, fallback.getCurrentPrice(), range);
-    }
-
-    private MarketData refreshCurrentMarketData(String ticker) {
-        try {
-            MarketData fetched = fetchCurrentMarketData(ticker);
-            return marketDataRepository.findByTickerSymbolIgnoreCase(ticker)
-                    .map(existing -> {
-                        existing.setCurrentPrice(fetched.getCurrentPrice());
-                        existing.setOpeningPrice(fetched.getOpeningPrice());
-                        existing.setClosingPrice(fetched.getClosingPrice());
-                        existing.setHighPrice(fetched.getHighPrice());
-                        existing.setLowPrice(fetched.getLowPrice());
-                        existing.setVolume(fetched.getVolume());
-                        existing.setLastUpdated(fetched.getLastUpdated());
-                        return marketDataRepository.save(existing);
-                    })
-                    .orElseGet(() -> marketDataRepository.save(fetched));
-        } catch (RuntimeException ex) {
-            return getOrCreateMarketData(ticker);
-        }
-    }
-
-    private MarketData fetchCurrentMarketData(String ticker) {
-        try {
-            Stock stock = YahooFinance.get(ticker, true);
-            StockQuote quote = stock.getQuote();
-
-            BigDecimal currentPrice = firstNonNull(quote != null ? quote.getPrice() : null, BigDecimal.ZERO);
-            BigDecimal openingPrice = firstNonNull(quote != null ? quote.getOpen() : null, currentPrice);
-            BigDecimal closingPrice = firstNonNull(quote != null ? quote.getPreviousClose() : null, currentPrice);
-            BigDecimal highPrice = firstNonNull(quote != null ? quote.getDayHigh() : null, currentPrice);
-            BigDecimal lowPrice = firstNonNull(quote != null ? quote.getDayLow() : null, currentPrice);
-            Long volume = quote != null ? quote.getVolume() : null;
-
-            return new MarketData(
-                    null,
-                    ticker,
-                    scale(currentPrice),
-                    scale(openingPrice),
-                    scale(closingPrice),
-                    scale(highPrice),
-                    scale(lowPrice),
-                    volume,
-                    LocalDateTime.now()
-            );
-        } catch (IOException ex) {
-            return buildFallbackMarketData(ticker);
-        }
-    }
-
-    private MarketData buildFallbackMarketData(String ticker) {
-        BigDecimal price = generateFallbackPrice(ticker);
-        BigDecimal open = price.multiply(new BigDecimal("0.992")).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal high = price.multiply(new BigDecimal("1.015")).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal low = price.multiply(new BigDecimal("0.985")).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal close = price.multiply(new BigDecimal("0.998")).setScale(2, RoundingMode.HALF_UP);
-
-        return new MarketData(
-                null,
-                ticker,
-                price,
-                open,
-                close,
-                high,
-                low,
-                15420000L + (long) (Math.abs(ticker.hashCode()) % 50000000),
-                LocalDateTime.now()
-        );
-    }
-
-    private List<HistoricalPricePointDTO> generateFallbackHistory(String ticker, BigDecimal currentPrice, String range) {
-        int days = daysForRange(range);
         int step = Math.max(1, days / 60);
         List<HistoricalPricePointDTO> history = new ArrayList<>();
         LocalDate now = LocalDate.now();
@@ -219,63 +123,14 @@ public class MarketDataService {
             BigDecimal openP = closeP.multiply(new BigDecimal("0.995")).setScale(2, RoundingMode.HALF_UP);
             BigDecimal highP = closeP.multiply(new BigDecimal("1.012")).setScale(2, RoundingMode.HALF_UP);
             BigDecimal lowP = closeP.multiply(new BigDecimal("0.988")).setScale(2, RoundingMode.HALF_UP);
-            Long vol = 10000000L + (long) (Math.sin(i) * 5000000);
+            Long vol = 10000000L + (long)(Math.sin(i) * 5000000);
 
             history.add(new HistoricalPricePointDTO(date, openP, closeP, highP, lowP, Math.abs(vol)));
         }
         return history;
     }
 
-    private List<HistoricalPricePointDTO> trimHistory(List<HistoricalPricePointDTO> history) {
-        if (history.size() <= HISTORY_LIMIT) {
-            return history;
-        }
-        return history.subList(history.size() - HISTORY_LIMIT, history.size());
-    }
-
-    private Calendar calculateFrom(String range) {
-        Calendar from = Calendar.getInstance();
-        from.add(Calendar.DAY_OF_YEAR, -daysForRange(range));
-        return from;
-    }
-
-    private Interval determineInterval(String range) {
-        String normalized = range == null ? "1m" : range.toLowerCase(Locale.ROOT);
-        return switch (normalized) {
-            case "1w", "7d" -> Interval.DAILY;
-            case "6m" -> Interval.WEEKLY;
-            case "1y", "5y" -> Interval.MONTHLY;
-            default -> Interval.DAILY;
-        };
-    }
-
-    private int daysForRange(String range) {
-        return switch (range == null ? "1m" : range.toLowerCase(Locale.ROOT)) {
-            case "1w", "7d" -> 7;
-            case "6m" -> 180;
-            case "1y" -> 365;
-            case "5y" -> 1825;
-            default -> 30;
-        };
-    }
-
-    private BigDecimal defaultBigDecimal(BigDecimal value) {
-        return value == null ? BigDecimal.ZERO : scale(value);
-    }
-
-    private BigDecimal scale(BigDecimal value) {
-        return value == null ? BigDecimal.ZERO : value.setScale(2, RoundingMode.HALF_UP);
-    }
-
-    private BigDecimal firstNonNull(BigDecimal primary, BigDecimal fallback) {
-        return primary != null ? primary : fallback;
-    }
-
-    private String normalizeTicker(String tickerSymbol) {
-        return tickerSymbol == null ? null : tickerSymbol.toUpperCase().trim();
-    }
-
-    private BigDecimal generateFallbackPrice(String ticker) {
+    private BigDecimal generateRandomPrice(String ticker) {
         int hash = Math.abs(ticker.hashCode());
         double val = 50.0 + (hash % 450);
         return new BigDecimal(val).setScale(2, RoundingMode.HALF_UP);
