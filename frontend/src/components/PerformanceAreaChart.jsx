@@ -1,13 +1,19 @@
 import React, { useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useTheme } from '../context/ThemeContext';
 
 export const PerformanceAreaChart = ({ performance }) => {
   const [timeframe, setTimeframe] = useState('1y');
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
 
   if (!performance || !performance.history) {
     return (
-      <div className="glass-card rounded-2xl p-6 h-80 flex items-center justify-center text-slate-500">
-        Loading Performance Growth Curve...
+      <div className="glass-card rounded-2xl p-6 h-80 flex items-center justify-center text-slate-500 dark:text-slate-400">
+        <div className="flex items-center gap-2">
+          <span className="w-3 h-3 rounded-full border-2 border-brand-500 border-t-transparent animate-spin" />
+          Loading Performance Growth Curve...
+        </div>
       </div>
     );
   }
@@ -20,8 +26,6 @@ export const PerformanceAreaChart = ({ performance }) => {
     switch (timeframe) {
       case '1m': return history.slice(Math.max(0, count - 4));
       case '6m': return history.slice(Math.max(0, count - 7));
-      case '1y': return history;
-      case '5y': return history;
       default: return history;
     }
   };
@@ -38,16 +42,16 @@ export const PerformanceAreaChart = ({ performance }) => {
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-slate-900 border border-slate-700 p-3.5 rounded-xl shadow-xl text-xs font-sans space-y-1">
-          <p className="font-semibold text-slate-300 border-b border-slate-800 pb-1">{label}</p>
+        <div className="bg-white border border-slate-200 p-3.5 rounded-xl shadow-xl text-xs font-sans space-y-1 dark:bg-slate-900 dark:border-slate-700">
+          <p className="font-semibold text-slate-600 border-b border-slate-200 pb-1 dark:text-slate-300 dark:border-slate-800">{label}</p>
           <div className="flex items-center justify-between gap-4">
             <span className="text-slate-400">Portfolio Value:</span>
-            <span className="font-bold text-brand-400 font-mono">{formatCurrency(payload[0].value)}</span>
+            <span className="font-bold text-brand-600 font-mono dark:text-brand-400">{formatCurrency(payload[0].value)}</span>
           </div>
           {payload[1] && (
             <div className="flex items-center justify-between gap-4">
               <span className="text-slate-400">Total Invested:</span>
-              <span className="font-semibold text-slate-300 font-mono">{formatCurrency(payload[1].value)}</span>
+              <span className="font-semibold text-slate-600 font-mono dark:text-slate-300">{formatCurrency(payload[1].value)}</span>
             </div>
           )}
         </div>
@@ -57,20 +61,20 @@ export const PerformanceAreaChart = ({ performance }) => {
   };
 
   return (
-    <div className="glass-card rounded-2xl p-6 border border-slate-800 flex flex-col h-full">
+    <div className="glass-card rounded-2xl p-6 flex flex-col h-full">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
         <div>
-          <h3 className="text-base font-bold text-slate-100">Portfolio Performance Curve</h3>
-          <p className="text-xs text-slate-400">Historical growth trend and total capital invested over time</p>
+          <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Portfolio Performance Curve</h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Historical growth trend and total capital invested over time</p>
         </div>
 
-        <div className="flex items-center p-1 bg-slate-900 border border-slate-800 rounded-xl">
+        <div className="flex items-center p-1 bg-slate-100 border border-slate-200 rounded-xl dark:bg-slate-900 dark:border-slate-800">
           {['1m', '6m', '1y', '5y'].map((tf) => (
             <button
               key={tf}
               onClick={() => setTimeframe(tf)}
               className={`px-3 py-1 text-xs font-semibold rounded-lg uppercase transition-all ${
-                timeframe === tf ? 'bg-brand-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
+                timeframe === tf ? 'bg-brand-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
               }`}
             >
               {tf}
@@ -92,10 +96,10 @@ export const PerformanceAreaChart = ({ performance }) => {
                 <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-            <XAxis dataKey="date" stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke={isDark ? 'rgba(255,255,255,0.05)' : 'rgba(15,23,42,0.08)'} vertical={false} />
+            <XAxis dataKey="date" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
             <YAxis
-              stroke="#64748b"
+              stroke="#94a3b8"
               fontSize={11}
               tickLine={false}
               axisLine={false}
@@ -108,7 +112,7 @@ export const PerformanceAreaChart = ({ performance }) => {
         </ResponsiveContainer>
       </div>
 
-      <div className="flex items-center justify-center gap-6 mt-3 text-xs text-slate-400">
+      <div className="flex items-center justify-center gap-6 mt-3 text-xs text-slate-500 dark:text-slate-400">
         <div className="flex items-center gap-2">
           <span className="w-3 h-0.5 bg-brand-500 rounded-full" />
           <span>Portfolio Value</span>

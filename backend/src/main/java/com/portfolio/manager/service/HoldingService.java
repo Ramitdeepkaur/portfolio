@@ -184,17 +184,6 @@ public class HoldingService {
             transactionService.createTransaction(transaction);
         }
 
-        holding.setAssetName(details.getAssetName());
-        holding.setTickerSymbol(details.getTickerSymbol());
-        holding.setAssetType(details.getAssetType());
-        holding.setQuantity(details.getQuantity());
-        holding.setPurchasePrice(details.getPurchasePrice());
-        holding.setPurchaseDate(details.getPurchaseDate());
-        if (details.getSector() != null) holding.setSector(details.getSector());
-        if (details.getExchange() != null) holding.setExchange(details.getExchange());
-        if (details.getCurrency() != null) holding.setCurrency(details.getCurrency());
-
-        Holding updated = holdingRepository.save(holding);
         return convertToDTO(updated);
     }
 
