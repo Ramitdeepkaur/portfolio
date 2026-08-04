@@ -18,6 +18,7 @@ public class MarketDataService {
 
     private final MarketDataRepository marketDataRepository;
     private final Map<String, BigDecimal> defaultPrices = new HashMap<>();
+    private final Object creationLock = new Object();
 
     public MarketDataService(MarketDataRepository marketDataRepository) {
         this.marketDataRepository = marketDataRepository;
@@ -45,29 +46,39 @@ public class MarketDataService {
             return existing.get();
         }
 
-        BigDecimal price = defaultPrices.getOrDefault(ticker, generateRandomPrice(ticker));
-        BigDecimal open = price.multiply(new BigDecimal("0.992")).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal high = price.multiply(new BigDecimal("1.015")).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal low = price.multiply(new BigDecimal("0.985")).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal close = price.multiply(new BigDecimal("0.998")).setScale(2, RoundingMode.HALF_UP);
+        // Only synchronize the rare "ticker doesn't exist yet" path: concurrent requests for the
+        // same brand-new ticker would otherwise all pass the check above and race to insert it,
+        // tripping the unique constraint on ticker_symbol.
+        synchronized (creationLock) {
+            existing = marketDataRepository.findByTickerSymbolIgnoreCase(ticker);
+            if (existing.isPresent()) {
+                return existing.get();
+            }
 
-        MarketData data = new MarketData(
-                null,
-                ticker,
-                price,
-                open,
-                close,
-                high,
-                low,
-                15420000L + (long)(Math.abs(ticker.hashCode()) % 50000000),
-                LocalDateTime.now()
-        );
+            BigDecimal price = defaultPrices.getOrDefault(ticker, generateRandomPrice(ticker));
+            BigDecimal open = price.multiply(new BigDecimal("0.992")).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal high = price.multiply(new BigDecimal("1.015")).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal low = price.multiply(new BigDecimal("0.985")).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal close = price.multiply(new BigDecimal("0.998")).setScale(2, RoundingMode.HALF_UP);
 
-        try {
-            return marketDataRepository.save(data);
-        } catch (DataIntegrityViolationException ex) {
-            return marketDataRepository.findByTickerSymbolIgnoreCase(ticker)
-                    .orElseThrow(() -> ex);
+            MarketData data = new MarketData(
+                    null,
+                    ticker,
+                    price,
+                    open,
+                    close,
+                    high,
+                    low,
+                    15420000L + (long)(Math.abs(ticker.hashCode()) % 50000000),
+                    LocalDateTime.now()
+            );
+
+            try {
+                return marketDataRepository.save(data);
+            } catch (DataIntegrityViolationException ex) {
+                return marketDataRepository.findByTickerSymbolIgnoreCase(ticker)
+                        .orElseThrow(() -> ex);
+            }
         }
     }
 
