@@ -4,6 +4,7 @@ import com.portfolio.manager.dto.HistoricalPricePointDTO;
 import com.portfolio.manager.dto.MarketDataDTO;
 import com.portfolio.manager.entity.MarketData;
 import com.portfolio.manager.repository.MarketDataRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -61,7 +62,13 @@ public class MarketDataService {
                 15420000L + (long)(Math.abs(ticker.hashCode()) % 50000000),
                 LocalDateTime.now()
         );
-        return marketDataRepository.save(data);
+
+        try {
+            return marketDataRepository.save(data);
+        } catch (DataIntegrityViolationException ex) {
+            return marketDataRepository.findByTickerSymbolIgnoreCase(ticker)
+                    .orElseThrow(() -> ex);
+        }
     }
 
     public MarketDataDTO getMarketDataDTO(String tickerSymbol, String timeframe) {
