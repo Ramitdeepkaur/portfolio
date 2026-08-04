@@ -10,6 +10,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 TRUNCATE TABLE holdings;
 TRUNCATE TABLE market_data;
 TRUNCATE TABLE portfolio_snapshots;
+TRUNCATE TABLE transactions;
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- Insert Sample Holdings
@@ -45,3 +46,9 @@ INSERT INTO portfolio_snapshots (portfolio_value, invested_amount, profit_loss, 
 (21900.00, 18200.00, 3700.00, '2026-03-01'),
 (24500.00, 18500.00, 6000.00, '2026-05-01'),
 (39469.90, 35365.00, 4104.90, CURDATE());
+
+-- Insert Sample Transactions
+INSERT INTO transactions (holding, type, quantity, price, amount, date, notes) VALUES
+('AAPL', 'BUY', 15.0, 150.00, 2250.00, '2026-07-01', 'Initial Apple purchase'),
+('MSFT', 'BUY', 10.0, 380.00, 3800.00, '2026-07-10', 'Added Microsoft position'),
+('NVDA', 'SELL', 2.0, 125.60, 251.20, '2026-07-15', 'Trimmed NVDA position');

@@ -1,13 +1,74 @@
-import React, { useState } from 'react';
-import { Search, Filter, ArrowUpDown, Edit2, Trash2, TrendingUp, TrendingDown, Eye } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Search, X, ArrowUpDown, Edit2, Trash2, TrendingUp, TrendingDown, Eye } from 'lucide-react';
+import api from '../api/client';
 
 export const HoldingsTable = ({ holdings, onEdit, onDelete, onViewMarket }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('ALL');
+  const [selectedSector, setSelectedSector] = useState('ALL');
   const [sortField, setSortField] = useState('currentValue');
   const [sortOrder, setSortOrder] = useState('desc');
+  const [filterOptions, setFilterOptions] = useState({ assetTypes: [], sectors: [] });
+  const [results, setResults] = useState(holdings || []);
+  const [loading, setLoading] = useState(false);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
   const assetTypes = ['ALL', 'STOCKS', 'ETFS', 'MUTUAL_FUNDS', 'BONDS', 'CASH'];
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    const loadOptions = async () => {
+      try {
+        const options = await api.getFilterOptions();
+        setFilterOptions({ assetTypes: options.assetTypes || [], sectors: options.sectors || [] });
+      } catch (err) {
+        console.error('Unable to load filter options', err);
+      }
+    };
+    loadOptions();
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    const runQuery = async () => {
+      setLoading(true);
+      try {
+        const criteria = {
+          query: debouncedSearch || undefined,
+          assetType: selectedType === 'ALL' ? undefined : selectedType,
+          sector: selectedSector === 'ALL' ? undefined : selectedSector,
+          sortBy: sortField,
+          order: sortOrder.toUpperCase(),
+          page: 0,
+          size: 100,
+        };
+        const response = await api.searchHoldings(criteria);
+        if (mounted) {
+          setResults(response || []);
+        }
+      } catch (err) {
+        if (mounted) {
+          setResults((holdings || []).filter((h) => {
+            const matchesSearch = !debouncedSearch || `${h.assetName} ${h.tickerSymbol} ${h.sector || ''}`.toLowerCase().includes(debouncedSearch.toLowerCase());
+            const matchesType = selectedType === 'ALL' || h.assetType?.toUpperCase() === selectedType;
+            const matchesSector = selectedSector === 'ALL' || (h.sector || '').toUpperCase() === selectedSector;
+            return matchesSearch && matchesType && matchesSector;
+          }));
+        }
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    runQuery();
+    return () => {
+      mounted = false;
+    };
+  }, [debouncedSearch, selectedType, selectedSector, sortField, sortOrder, holdings]);
 
   const formatCurrency = (val) => {
     if (val === undefined || val === null) return '$0.00';
@@ -23,24 +84,26 @@ export const HoldingsTable = ({ holdings, onEdit, onDelete, onViewMarket }) => {
     }
   };
 
-  const filteredHoldings = (holdings || []).filter((h) => {
-    const matchesSearch =
-      h.assetName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      h.tickerSymbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (h.sector && h.sector.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesType = selectedType === 'ALL' || h.assetType?.toUpperCase() === selectedType;
-    return matchesSearch && matchesType;
-  });
+  const activeFilters = useMemo(() => {
+    const filters = [];
+    if (searchTerm.trim()) filters.push(`Query: ${searchTerm.trim()}`);
+    if (selectedType !== 'ALL') filters.push(`Type: ${selectedType}`);
+    if (selectedSector !== 'ALL') filters.push(`Sector: ${selectedSector}`);
+    return filters;
+  }, [searchTerm, selectedType, selectedSector]);
 
-  const sortedHoldings = [...filteredHoldings].sort((a, b) => {
-    let valA = a[sortField];
-    let valB = b[sortField];
+  const visibleHoldings = useMemo(() => {
+    const source = Array.isArray(results) && results.length > 0 ? results : holdings || [];
+    return [...source].sort((a, b) => {
+      let valA = a[sortField];
+      let valB = b[sortField];
 
-    if (typeof valA === 'string') {
-      return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
-    }
-    return sortOrder === 'asc' ? valA - valB : valB - valA;
-  });
+      if (typeof valA === 'string') {
+        return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      }
+      return sortOrder === 'asc' ? valA - valB : valB - valA;
+    });
+  }, [results, holdings, sortField, sortOrder]);
 
   const getTypeBadge = (type) => {
     switch (type?.toUpperCase()) {
@@ -69,7 +132,6 @@ export const HoldingsTable = ({ holdings, onEdit, onDelete, onViewMarket }) => {
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          {/* Search bar */}
           <div className="relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
@@ -81,26 +143,60 @@ export const HoldingsTable = ({ holdings, onEdit, onDelete, onViewMarket }) => {
             />
           </div>
 
-          {/* Filter Pills */}
-          <div className="flex items-center gap-1 overflow-x-auto p-1 bg-slate-900 border border-slate-800 rounded-xl">
+          <select
+            value={selectedType}
+            onChange={(e) => setSelectedType(e.target.value)}
+            className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs text-slate-200"
+          >
             {assetTypes.map((type) => (
-              <button
-                key={type}
-                onClick={() => setSelectedType(type)}
-                className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-all whitespace-nowrap ${
-                  selectedType === type
-                    ? 'bg-brand-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                {type}
-              </button>
+              <option key={type} value={type}>{type === 'ALL' ? 'All types' : type}</option>
             ))}
-          </div>
+          </select>
+
+          <select
+            value={selectedSector}
+            onChange={(e) => setSelectedSector(e.target.value)}
+            className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs text-slate-200"
+          >
+            <option value="ALL">All sectors</option>
+            {filterOptions.sectors.map((sector) => (
+              <option key={sector} value={sector}>{sector}</option>
+            ))}
+          </select>
+
+          <button
+            onClick={() => {
+              setSearchTerm('');
+              setSelectedType('ALL');
+              setSelectedSector('ALL');
+            }}
+            className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs text-slate-300 hover:text-white"
+          >
+            <span className="flex items-center gap-2">
+              <X className="h-3.5 w-3.5" /> Clear
+            </span>
+          </button>
         </div>
       </div>
 
-      {/* Table */}
+      <div className="border-b border-slate-800 bg-slate-950/50 px-5 py-3 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-wrap gap-2">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Active filters</span>
+          {activeFilters.length === 0 ? (
+            <span className="text-[11px] text-slate-400">No filters applied</span>
+          ) : (
+            activeFilters.map((filter) => (
+              <span key={filter} className="rounded-full border border-brand-500/20 bg-brand-500/10 px-2.5 py-1 text-[11px] text-brand-300">
+                {filter}
+              </span>
+            ))
+          )}
+        </div>
+        <div className="text-[11px] text-slate-400">
+          {loading ? 'Refreshing results…' : `${visibleHoldings.length} holdings matched`}
+        </div>
+      </div>
+
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
@@ -141,14 +237,14 @@ export const HoldingsTable = ({ holdings, onEdit, onDelete, onViewMarket }) => {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/60 text-xs">
-            {sortedHoldings.length === 0 ? (
+            {visibleHoldings.length === 0 ? (
               <tr>
                 <td colSpan={8} className="py-12 text-center text-slate-500">
                   No investment holdings found.
                 </td>
               </tr>
             ) : (
-              sortedHoldings.map((holding) => {
+              visibleHoldings.map((holding) => {
                 const isGain = holding.profitLoss >= 0;
                 return (
                   <tr key={holding.id} className="hover:bg-slate-900/60 transition-colors">

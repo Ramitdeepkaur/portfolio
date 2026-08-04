@@ -1,10 +1,13 @@
 import React from 'react';
-import { LayoutDashboard, Briefcase, BarChart3, LineChart, PieChart } from 'lucide-react';
+import { LayoutDashboard, Briefcase, BarChart3, LineChart, History, ShieldCheck, Sparkles } from 'lucide-react';
 
 export const Sidebar = ({ activeTab, setActiveTab }) => {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'holdings', label: 'Holdings', icon: Briefcase },
+    { id: 'transactions', label: 'Transactions', icon: History },
+    { id: 'audit', label: 'Audit Trail', icon: ShieldCheck },
+    { id: 'scenarios', label: 'Scenarios', icon: Sparkles },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'market', label: 'Market Watch', icon: LineChart },
   ];
