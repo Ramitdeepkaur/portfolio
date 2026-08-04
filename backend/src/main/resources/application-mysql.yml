@@ -5,12 +5,12 @@ spring:
   application:
     name: portfolio-manager
   datasource:
-    url: jdbc:mysql://localhost:3306/portfoliodb?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-    username: root
-    password: password
-    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/portfoliodb?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:n3u3da!}
+    driver-class-name: ${SPRING_DATASOURCE_DRIVER_CLASS_NAME:com.mysql.cj.jdbc.Driver}
   jpa:
-    database-platform: org.hibernate.dialect.MySQLDialect
+    database-platform: ${SPRING_JPA_DATABASE_PLATFORM:org.hibernate.dialect.MySQLDialect}
     hibernate:
       ddl-auto: update
     show-sql: true
