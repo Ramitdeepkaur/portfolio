@@ -2,8 +2,10 @@ package com.portfolio.manager.config;
 
 import com.portfolio.manager.entity.Holding;
 import com.portfolio.manager.entity.PortfolioSnapshot;
+import com.portfolio.manager.entity.Transaction;
 import com.portfolio.manager.repository.HoldingRepository;
 import com.portfolio.manager.repository.PortfolioSnapshotRepository;
+import com.portfolio.manager.repository.TransactionRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
@@ -16,10 +18,12 @@ public class DataInitializer implements CommandLineRunner {
 
     private final HoldingRepository holdingRepository;
     private final PortfolioSnapshotRepository snapshotRepository;
+    private final TransactionRepository transactionRepository;
 
-    public DataInitializer(HoldingRepository holdingRepository, PortfolioSnapshotRepository snapshotRepository) {
+    public DataInitializer(HoldingRepository holdingRepository, PortfolioSnapshotRepository snapshotRepository, TransactionRepository transactionRepository) {
         this.holdingRepository = holdingRepository;
         this.snapshotRepository = snapshotRepository;
+        this.transactionRepository = transactionRepository;
     }
 
     @Override
@@ -51,6 +55,14 @@ public class DataInitializer implements CommandLineRunner {
                     new PortfolioSnapshot(null, new BigDecimal("26850.00"), new BigDecimal("18850.00"), new BigDecimal("8000.00"), now)
             );
             snapshotRepository.saveAll(snapshots);
+        }
+
+        if (transactionRepository.count() == 0) {
+            List<Transaction> seedTransactions = List.of(
+                    new Transaction(null, "AAPL", "BUY", 15.0, new BigDecimal("150.00"), new BigDecimal("2250.00"), LocalDate.now().minusDays(30), "Initial Apple purchase"),
+                    new Transaction(null, "MSFT", "BUY", 10.0, new BigDecimal("380.00"), new BigDecimal("3800.00"), LocalDate.now().minusDays(20), "Added Microsoft position"),
+                    new Transaction(null, "NVDA", "SELL", 2.0, new BigDecimal("125.60"), new BigDecimal("251.20"), LocalDate.now().minusDays(10), "Trimmed NVDA"));
+            transactionRepository.saveAll(seedTransactions);
         }
     }
 }
