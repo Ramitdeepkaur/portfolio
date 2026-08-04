@@ -1,10 +1,26 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { usePortfolio } from '../context/PortfolioContext';
 import HoldingsTable from '../components/HoldingsTable';
+import HoldingHistoryPanel from '../components/HoldingHistoryPanel';
 import { Plus, FileUp } from 'lucide-react';
+import api from '../api/client';
 
 export const HoldingsPage = ({ onOpenAddModal, onOpenCsvModal, onEditHolding, onDeleteHolding, onViewMarket }) => {
   const { holdings, summary } = usePortfolio();
+  const [selectedHoldingId, setSelectedHoldingId] = useState(holdings[0]?.id || '');
+  const [transactions, setTransactions] = useState([]);
+  const [auditLogs, setAuditLogs] = useState([]);
+
+  useEffect(() => {
+    const loadHistory = async () => {
+      const [txData, auditData] = await Promise.all([api.getTransactions(), api.getAuditLogs()]);
+      setTransactions(txData);
+      setAuditLogs(auditData);
+    };
+    loadHistory();
+  }, [holdings]);
+
+  const selectedHolding = holdings.find((holding) => holding.id === selectedHoldingId) || holdings[0] || null;
 
   const formatCurrency = (val) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val || 0);
 
@@ -43,6 +59,23 @@ export const HoldingsPage = ({ onOpenAddModal, onOpenCsvModal, onEditHolding, on
         onDelete={onDeleteHolding}
         onViewMarket={onViewMarket}
       />
+
+      <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+        <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-slate-100">Holding history snapshot</h3>
+            <p className="text-sm text-slate-400">Inspect recent transactions and audit events for the selected position.</p>
+          </div>
+          <select value={selectedHoldingId} onChange={(e) => setSelectedHoldingId(e.target.value)} className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-300">
+            {holdings.map((holding) => (
+              <option key={holding.id} value={holding.id}>
+                {holding.tickerSymbol || holding.assetName}
+              </option>
+            ))}
+          </select>
+        </div>
+        <HoldingHistoryPanel holding={selectedHolding} transactions={transactions} auditLogs={auditLogs} />
+      </div>
     </div>
   );
 };
