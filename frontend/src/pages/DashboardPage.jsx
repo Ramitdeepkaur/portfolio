@@ -161,7 +161,7 @@ export const DashboardPage = ({ onOpenAddModal, onEditHolding, onDeleteHolding, 
             </div>
             <div>
               <span className="text-xs text-emerald-400 font-semibold uppercase">Top Performing Asset</span>
-              <div className="font-bold text-slate-100 text-sm">
+              <div className="font-bold text-slate-900 dark:text-slate-100 text-sm">
                 {summary.bestPerformingAsset.assetName} ({summary.bestPerformingAsset.tickerSymbol})
               </div>
             </div>
@@ -181,7 +181,7 @@ export const DashboardPage = ({ onOpenAddModal, onEditHolding, onDeleteHolding, 
             </div>
             <div>
               <span className="text-xs text-rose-400 font-semibold uppercase">Lowest Performing Asset</span>
-              <div className="font-bold text-slate-100 text-sm">
+              <div className="font-bold text-slate-900 dark:text-slate-100 text-sm">
                 {summary.worstPerformingAsset.assetName} ({summary.worstPerformingAsset.tickerSymbol})
               </div>
             </div>
@@ -232,13 +232,13 @@ export const DashboardPage = ({ onOpenAddModal, onEditHolding, onDeleteHolding, 
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-100 tracking-tight flex items-center gap-2.5">
+          <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-brand-500/10 border border-brand-500/20 text-brand-400">
               <LayoutDashboard className="w-4 h-4" />
             </div>
             Dashboard Overview
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             {customizing
               ? 'Drag widgets to reorder them — your layout is saved automatically'
               : 'Personalize your dashboard: arrange, resize and hide widgets'}
@@ -248,7 +248,7 @@ export const DashboardPage = ({ onOpenAddModal, onEditHolding, onDeleteHolding, 
         <div className="flex items-center gap-2">
           <button
             onClick={resetLayout}
-            className="px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 transition-all text-xs font-semibold flex items-center gap-2"
+            className="px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300 transition-all text-xs font-semibold flex items-center gap-2 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:text-white dark:hover:border-slate-700"
             title="Reset dashboard layout to defaults"
           >
             <RotateCcw className="w-3.5 h-3.5" />
@@ -260,7 +260,7 @@ export const DashboardPage = ({ onOpenAddModal, onEditHolding, onDeleteHolding, 
             className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all ${
               customizing
                 ? 'bg-gradient-to-r from-brand-600 to-indigo-600 text-white shadow-lg shadow-brand-600/30'
-                : 'bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700'
+                : 'bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:text-white dark:hover:border-slate-700'
             }`}
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
@@ -271,12 +271,12 @@ export const DashboardPage = ({ onOpenAddModal, onEditHolding, onDeleteHolding, 
       </div>
 
       {visibleWidgets.length === 0 ? (
-        <div className="glass-card rounded-2xl border border-slate-800 p-12 text-center">
-          <div className="w-14 h-14 mx-auto rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-500 mb-4">
+        <div className="glass-card rounded-2xl border border-slate-200 dark:border-slate-800 p-12 text-center">
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-400 mb-4 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-500">
             <SlidersHorizontal className="w-6 h-6" />
           </div>
-          <h3 className="text-base font-bold text-slate-100">All widgets are hidden</h3>
-          <p className="text-xs text-slate-400 mt-1.5 mb-5">
+          <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">All widgets are hidden</h3>
+          <p className="text-xs text-slate-500 mt-1.5 mb-5 dark:text-slate-400">
             Open the dashboard customizer to bring widgets back to your view.
           </p>
           <button
