@@ -61,13 +61,13 @@ export const HoldingsPage = ({ onOpenAddModal, onOpenCsvModal, onEditHolding, on
         onViewMarket={onViewMarket}
       />
 
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+      <div className="rounded-2xl border border-slate-200 bg-white/70 p-4 dark:border-slate-800 dark:bg-slate-900/70">
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-slate-100">Holding history snapshot</h3>
-            <p className="text-sm text-slate-400">Inspect recent transactions and audit events for the selected position.</p>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Holding history snapshot</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Inspect recent transactions and audit events for the selected position.</p>
           </div>
-          <select value={selectedHoldingId} onChange={(e) => setSelectedHoldingId(e.target.value)} className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-300">
+          <select value={selectedHoldingId} onChange={(e) => setSelectedHoldingId(e.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
             {holdings.map((holding) => (
               <option key={holding.id} value={holding.id}>
                 {holding.tickerSymbol || holding.assetName}
