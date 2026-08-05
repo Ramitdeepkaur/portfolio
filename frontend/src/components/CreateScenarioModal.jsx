@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { X, Sparkles, Copy, FolderTree } from 'lucide-react';
 import api from '../api/client';
-import { normalizeHolding } from '../utils/scenarioMath';
+import { normalizeHolding, parseScenarioData, projectForecast, retirementAnalysis } from '../utils/scenarioMath';
 
 const TYPE_OPTIONS = [
   { value: 'WHAT_IF', label: 'What-If Analysis', hint: 'Modify holdings and see portfolio impact' },
@@ -36,38 +36,54 @@ export const CreateScenarioModal = ({ isOpen, scenarios = [], holdings = [], por
     ? scenarios.find((s) => String(s.id) === String(duplicateFrom))?.scenarioType
     : scenarioType;
 
+  const snapshotHoldings = () => (holdings || []).map(normalizeHolding);
+
   const buildData = () => {
     if (duplicating) {
       const source = scenarios.find((s) => String(s.id) === String(duplicateFrom));
-      return source ? { ...(source.data || {}) } : {};
+      return source ? { ...parseScenarioData(source.data) } : {};
     }
-    return {
-      WHAT_IF: {
-        baseHoldings: cloneCurrent ? [] : [],
+
+    const baseHoldings = cloneCurrent ? snapshotHoldings() : [];
+    const baseValue = cloneCurrent
+      ? baseHoldings.reduce((sum, h) => sum + Number(h.quantity || 0) * Number(h.currentPrice || 0), 0)
+      : Number(portfolioValue || 0);
+
+    if (scenarioType === 'WHAT_IF') {
+      return {
+        baseHoldings,
         changes: [],
         result: null,
         clonedFromPortfolio: cloneCurrent,
-      },
-      FORECAST: {
-        initialInvestment: portfolioValue,
+      };
+    }
+
+    if (scenarioType === 'FORECAST') {
+      const params = {
+        initialInvestment: baseValue || Number(portfolioValue || 0),
         annualReturn: 8,
         inflation: 2.5,
         volatility: 15,
         years: 20,
         monthlyContribution: 500,
-        series: null,
-        milestones: null,
-      },
-      RETIREMENT: {
-        currentAge: 30,
-        retirementAge: 60,
-        currentSavings: portfolioValue,
-        annualReturn: 8,
-        targetAmount: 1000000,
-        currentMonthlyContribution: 500,
-        result: null,
-      },
-    }[scenarioType];
+      };
+      const series = projectForecast(params);
+      return { ...params, series, milestones: null, baseHoldings };
+    }
+
+    const retirementParams = {
+      currentAge: 30,
+      retirementAge: 60,
+      currentSavings: baseValue || Number(portfolioValue || 0),
+      annualReturn: 8,
+      targetAmount: 1000000,
+      currentMonthlyContribution: 500,
+    };
+    return {
+      ...retirementParams,
+      result: retirementAnalysis(retirementParams),
+      baseHoldings,
+    };
   };
 
   const handleCreate = async () => {
@@ -78,19 +94,82 @@ export const CreateScenarioModal = ({ isOpen, scenarios = [], holdings = [], por
 
     const source = duplicating ? scenarios.find((s) => String(s.id) === String(duplicateFrom)) : null;
 
-    const payload = {
-      name: duplicating ? name.trim() : name.trim(),
-      description: duplicating
-        ? description.trim() || `Duplicated from ${source?.name}`
-        : description.trim(),
-      scenarioType: effectiveType,
-      basePortfolioValue: portfolioValue,
-      data: JSON.stringify(buildData()),
-    };
-
     setSaving(true);
     setError('');
     try {
+      // Refresh live Yahoo quotes before cloning so the snapshot uses current marks
+      if (!duplicating && cloneCurrent) {
+        try {
+          await api.refreshMarket();
+        } catch {
+          // Continue with cached holdings prices
+        }
+      }
+
+      const freshHoldings = !duplicating && cloneCurrent
+        ? await api.getHoldings().catch(() => holdings)
+        : holdings;
+
+      // Temporarily swap holdings for build when we fetched fresh ones
+      const dataPayload = (() => {
+        if (duplicating) return buildData();
+        const previous = holdings;
+        // rebuild using freshHoldings
+        const baseHoldings = cloneCurrent ? (freshHoldings || previous || []).map(normalizeHolding) : [];
+        const baseValue = cloneCurrent
+          ? baseHoldings.reduce((sum, h) => sum + Number(h.quantity || 0) * Number(h.currentPrice || 0), 0)
+          : Number(portfolioValue || 0);
+
+        if (scenarioType === 'WHAT_IF') {
+          return {
+            baseHoldings,
+            changes: [],
+            result: null,
+            clonedFromPortfolio: cloneCurrent,
+          };
+        }
+        if (scenarioType === 'FORECAST') {
+          const params = {
+            initialInvestment: baseValue || Number(portfolioValue || 0),
+            annualReturn: 8,
+            inflation: 2.5,
+            volatility: 15,
+            years: 20,
+            monthlyContribution: 500,
+          };
+          return { ...params, series: projectForecast(params), milestones: null, baseHoldings };
+        }
+        const retirementParams = {
+          currentAge: 30,
+          retirementAge: 60,
+          currentSavings: baseValue || Number(portfolioValue || 0),
+          annualReturn: 8,
+          targetAmount: 1000000,
+          currentMonthlyContribution: 500,
+        };
+        return { ...retirementParams, result: retirementAnalysis(retirementParams), baseHoldings };
+      })();
+
+      const computedBase = (() => {
+        const bh = dataPayload.baseHoldings || [];
+        if (bh.length) {
+          return bh.reduce((sum, h) => sum + Number(h.quantity || 0) * Number(h.currentPrice || 0), 0);
+        }
+        return Number(portfolioValue || 0);
+      })();
+
+      const payload = {
+        name: name.trim(),
+        description: duplicating
+          ? description.trim() || `Duplicated from ${source?.name}`
+          : description.trim(),
+        scenarioType: effectiveType,
+        basePortfolioValue: duplicating
+          ? Number(source?.basePortfolioValue || portfolioValue || 0)
+          : computedBase,
+        data: JSON.stringify(dataPayload),
+      };
+
       const created = await api.createScenario(payload);
       onCreated(created);
     } catch (err) {
@@ -108,7 +187,6 @@ export const CreateScenarioModal = ({ isOpen, scenarios = [], holdings = [], por
       <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm" onClick={onClose} />
 
       <div className="relative w-full max-w-lg bg-slate-950 border border-slate-800 rounded-2xl shadow-2xl shadow-black/50 max-h-[90vh] overflow-y-auto">
-        {/* Header */}
         <div className="p-5 border-b border-slate-800 flex items-start justify-between sticky top-0 bg-slate-950 z-10">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-brand-500/10 border border-brand-500/20 text-brand-400">
@@ -116,7 +194,7 @@ export const CreateScenarioModal = ({ isOpen, scenarios = [], holdings = [], por
             </div>
             <div>
               <h2 className="text-base font-bold text-slate-100">Create Scenario</h2>
-              <p className="text-xs text-slate-400">Plan, simulate and compare portfolio scenarios</p>
+              <p className="text-xs text-slate-400">Clone live holdings, then simulate what-if / forecast / retirement</p>
             </div>
           </div>
           <button
@@ -140,7 +218,7 @@ export const CreateScenarioModal = ({ isOpen, scenarios = [], holdings = [], por
             </label>
             <input
               className={inputClass}
-              placeholder="e.g. Aggressive Growth 2045"
+              placeholder="e.g. Trim NVDA / Aggressive Growth"
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
@@ -168,6 +246,7 @@ export const CreateScenarioModal = ({ isOpen, scenarios = [], holdings = [], por
                 {TYPE_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
+                    type="button"
                     onClick={() => setScenarioType(opt.value)}
                     className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
                       scenarioType === opt.value
@@ -202,11 +281,6 @@ export const CreateScenarioModal = ({ isOpen, scenarios = [], holdings = [], por
                 ))}
               </select>
             </div>
-            <p className="text-[11px] text-slate-500 mt-1">
-              {duplicating
-                ? 'Type and data will be copied from the selected scenario. You can edit them after creation.'
-                : 'Copy the assumptions and settings of an existing scenario as your starting point.'}
-            </p>
           </div>
 
           <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center justify-between gap-3">
@@ -216,14 +290,15 @@ export const CreateScenarioModal = ({ isOpen, scenarios = [], holdings = [], por
               </div>
               <div>
                 <p className="text-xs font-semibold text-slate-100">
-                  Clone current portfolio as starting point
+                  Clone current portfolio (live Yahoo prices)
                 </p>
                 <p className="text-[11px] text-slate-400">
-                  Current portfolio value: ${Number(portfolioValue || 0).toLocaleString()}
+                  {(holdings || []).length} holdings · ${Number(portfolioValue || 0).toLocaleString()}
                 </p>
               </div>
             </div>
             <button
+              type="button"
               onClick={() => setCloneCurrent((prev) => !prev)}
               className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 ${
                 cloneCurrent ? 'bg-brand-600' : 'bg-slate-700'
@@ -239,19 +314,20 @@ export const CreateScenarioModal = ({ isOpen, scenarios = [], holdings = [], por
           </div>
         </div>
 
-        {/* Footer */}
         <div className="p-5 border-t border-slate-800 flex items-center justify-between gap-3 sticky bottom-0 bg-slate-950">
           <span className="text-[11px] text-slate-500">
             {effectiveType ? `New ${effectiveType.replaceAll('_', ' ')} scenario` : ''}
           </span>
           <div className="flex gap-2">
             <button
+              type="button"
               onClick={onClose}
               className="px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 text-xs font-semibold transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
+              type="button"
               onClick={handleCreate}
               disabled={saving}
               className="px-4 py-2 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 text-white font-semibold text-xs shadow-lg shadow-brand-600/30 transition-all disabled:opacity-60 cursor-pointer"

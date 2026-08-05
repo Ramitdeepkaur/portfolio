@@ -9,12 +9,12 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { projectForecast, retirementAnalysis, formatCurrency } from '../utils/scenarioMath';
+import { projectForecast, retirementAnalysis, formatCurrency, parseScenarioData } from '../utils/scenarioMath';
 
 const PALETTE = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#06b6d4', '#8b5cf6', '#f43f5e', '#84cc16'];
 
 const getScenarioSeries = (scenario) => {
-  const data = scenario.data || {};
+  const data = parseScenarioData(scenario.data);
   let series = null;
 
   if (scenario.scenarioType === 'FORECAST' && Array.isArray(data.series) && data.series.length) {
@@ -53,13 +53,19 @@ const getScenarioSeries = (scenario) => {
 
 export const ScenarioComparisonChart = ({ scenarios = [], height = 380 }) => {
   const chartData = useMemo(() => {
-    const seriesList = scenarios.map((scenario) => ({ scenario, series: getScenarioSeries(scenario) }));
-    const maxYear = Math.max(1, ...seriesList.flatMap(({ series }) => series.map((p) => Number(p.year || 0))));
+    const enriched = scenarios.map((scenario) => {
+      const clone = { ...scenario, data: parseScenarioData(scenario.data) };
+      return { scenario: clone, series: getScenarioSeries(clone) };
+    });
+    const maxYear = Math.max(
+      1,
+      ...enriched.flatMap(({ series }) => series.map((p) => Number(p.year || 0))),
+    );
 
     const merged = [];
     for (let y = 0; y <= maxYear; y++) {
       const row = { year: y };
-      seriesList.forEach(({ scenario, series }) => {
+      enriched.forEach(({ scenario, series }) => {
         const point = series.find((p) => Number(p.year) === y) || [...series].sort((a, b) => b.year - a.year)[0];
         if (point) {
           if (scenario.scenarioType === 'WHAT_IF') {
