@@ -84,6 +84,15 @@ export const AddHoldingModal = ({ isOpen, onClose, onSuccess }) => {
   const inputClass = 'w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-brand-500 focus:outline-none dark:bg-slate-900 dark:border-slate-800 dark:text-slate-100 dark:placeholder-slate-500';
   const labelClass = 'block text-slate-500 dark:text-slate-400 font-medium mb-1';
 
+  const qtyNum = Number(formData.quantity);
+  const priceNum = Number(formData.purchasePrice);
+  const totalCost =
+    Number.isFinite(qtyNum) && qtyNum > 0 && Number.isFinite(priceNum) && priceNum > 0
+      ? qtyNum * priceNum
+      : null;
+  const formatMoney = (val) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md overlay-fade" role="dialog" aria-modal="true" aria-label="Add new investment">
       <div className="glass-card w-full max-w-lg rounded-2xl p-6 shadow-2xl space-y-5 modal-panel max-h-[90vh] overflow-y-auto">
@@ -169,7 +178,7 @@ export const AddHoldingModal = ({ isOpen, onClose, onSuccess }) => {
             </div>
 
             <div>
-              <label className={labelClass}>Purchase Price ($) *</label>
+              <label className={labelClass}>Purchase Price / share ($) *</label>
               <input
                 type="number"
                 step="any"
@@ -180,8 +189,23 @@ export const AddHoldingModal = ({ isOpen, onClose, onSuccess }) => {
                 onChange={(e) => setFormData({ ...formData, purchasePrice: e.target.value })}
                 className={`${inputClass} font-mono`}
               />
+              <span className="text-[11px] text-slate-400 mt-1 block">
+                Per-share cost basis (defaults to live quote)
+              </span>
             </div>
           </div>
+
+          {totalCost != null && (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 flex items-center justify-between dark:border-slate-800 dark:bg-slate-900/60">
+              <span className="text-slate-500 dark:text-slate-400 font-medium">Estimated total invested</span>
+              <span className="font-mono font-semibold text-slate-900 dark:text-slate-100">
+                {formatMoney(totalCost)}
+                <span className="text-slate-400 font-normal ml-2">
+                  ({qtyNum} × {formatMoney(priceNum)})
+                </span>
+              </span>
+            </div>
+          )}
 
           <div className="grid grid-cols-3 gap-3">
             <div>

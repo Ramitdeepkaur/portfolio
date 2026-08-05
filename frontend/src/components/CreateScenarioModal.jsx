@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { X, Sparkles, Copy, FolderTree } from 'lucide-react';
 import api from '../api/client';
-import { normalizeHolding } from '../utils/scenarioMath';
+import { normalizeHolding, parseScenarioData, projectForecast, retirementAnalysis } from '../utils/scenarioMath';
 
 const TYPE_OPTIONS = [
   { value: 'WHAT_IF', label: 'What-If Analysis', hint: 'Modify holdings and see portfolio impact' },
@@ -36,38 +36,54 @@ export const CreateScenarioModal = ({ isOpen, scenarios = [], holdings = [], por
     ? scenarios.find((s) => String(s.id) === String(duplicateFrom))?.scenarioType
     : scenarioType;
 
+  const snapshotHoldings = () => (holdings || []).map(normalizeHolding);
+
   const buildData = () => {
     if (duplicating) {
       const source = scenarios.find((s) => String(s.id) === String(duplicateFrom));
-      return source ? { ...(source.data || {}) } : {};
+      return source ? { ...parseScenarioData(source.data) } : {};
     }
-    return {
-      WHAT_IF: {
-        baseHoldings: cloneCurrent ? [] : [],
+
+    const baseHoldings = cloneCurrent ? snapshotHoldings() : [];
+    const baseValue = cloneCurrent
+      ? baseHoldings.reduce((sum, h) => sum + Number(h.quantity || 0) * Number(h.currentPrice || 0), 0)
+      : Number(portfolioValue || 0);
+
+    if (scenarioType === 'WHAT_IF') {
+      return {
+        baseHoldings,
         changes: [],
         result: null,
         clonedFromPortfolio: cloneCurrent,
-      },
-      FORECAST: {
-        initialInvestment: portfolioValue,
+      };
+    }
+
+    if (scenarioType === 'FORECAST') {
+      const params = {
+        initialInvestment: baseValue || Number(portfolioValue || 0),
         annualReturn: 8,
         inflation: 2.5,
         volatility: 15,
         years: 20,
         monthlyContribution: 500,
-        series: null,
-        milestones: null,
-      },
-      RETIREMENT: {
-        currentAge: 30,
-        retirementAge: 60,
-        currentSavings: portfolioValue,
-        annualReturn: 8,
-        targetAmount: 1000000,
-        currentMonthlyContribution: 500,
-        result: null,
-      },
-    }[scenarioType];
+      };
+      const series = projectForecast(params);
+      return { ...params, series, milestones: null, baseHoldings };
+    }
+
+    const retirementParams = {
+      currentAge: 30,
+      retirementAge: 60,
+      currentSavings: baseValue || Number(portfolioValue || 0),
+      annualReturn: 8,
+      targetAmount: 1000000,
+      currentMonthlyContribution: 500,
+    };
+    return {
+      ...retirementParams,
+      result: retirementAnalysis(retirementParams),
+      baseHoldings,
+    };
   };
 
   const handleCreate = async () => {
@@ -78,19 +94,82 @@ export const CreateScenarioModal = ({ isOpen, scenarios = [], holdings = [], por
 
     const source = duplicating ? scenarios.find((s) => String(s.id) === String(duplicateFrom)) : null;
 
-    const payload = {
-      name: duplicating ? name.trim() : name.trim(),
-      description: duplicating
-        ? description.trim() || `Duplicated from ${source?.name}`
-        : description.trim(),
-      scenarioType: effectiveType,
-      basePortfolioValue: portfolioValue,
-      data: JSON.stringify(buildData()),
-    };
-
     setSaving(true);
     setError('');
     try {
+      // Refresh live Yahoo quotes before cloning so the snapshot uses current marks
+      if (!duplicating && cloneCurrent) {
+        try {
+          await api.refreshMarket();
+        } catch {
+          // Continue with cached holdings prices
+        }
+      }
+
+      const freshHoldings = !duplicating && cloneCurrent
+        ? await api.getHoldings().catch(() => holdings)
+        : holdings;
+
+      // Temporarily swap holdings for build when we fetched fresh ones
+      const dataPayload = (() => {
+        if (duplicating) return buildData();
+        const previous = holdings;
+        // rebuild using freshHoldings
+        const baseHoldings = cloneCurrent ? (freshHoldings || previous || []).map(normalizeHolding) : [];
+        const baseValue = cloneCurrent
+          ? baseHoldings.reduce((sum, h) => sum + Number(h.quantity || 0) * Number(h.currentPrice || 0), 0)
+          : Number(portfolioValue || 0);
+
+        if (scenarioType === 'WHAT_IF') {
+          return {
+            baseHoldings,
+            changes: [],
+            result: null,
+            clonedFromPortfolio: cloneCurrent,
+          };
+        }
+        if (scenarioType === 'FORECAST') {
+          const params = {
+            initialInvestment: baseValue || Number(portfolioValue || 0),
+            annualReturn: 8,
+            inflation: 2.5,
+            volatility: 15,
+            years: 20,
+            monthlyContribution: 500,
+          };
+          return { ...params, series: projectForecast(params), milestones: null, baseHoldings };
+        }
+        const retirementParams = {
+          currentAge: 30,
+          retirementAge: 60,
+          currentSavings: baseValue || Number(portfolioValue || 0),
+          annualReturn: 8,
+          targetAmount: 1000000,
+          currentMonthlyContribution: 500,
+        };
+        return { ...retirementParams, result: retirementAnalysis(retirementParams), baseHoldings };
+      })();
+
+      const computedBase = (() => {
+        const bh = dataPayload.baseHoldings || [];
+        if (bh.length) {
+          return bh.reduce((sum, h) => sum + Number(h.quantity || 0) * Number(h.currentPrice || 0), 0);
+        }
+        return Number(portfolioValue || 0);
+      })();
+
+      const payload = {
+        name: name.trim(),
+        description: duplicating
+          ? description.trim() || `Duplicated from ${source?.name}`
+          : description.trim(),
+        scenarioType: effectiveType,
+        basePortfolioValue: duplicating
+          ? Number(source?.basePortfolioValue || portfolioValue || 0)
+          : computedBase,
+        data: JSON.stringify(dataPayload),
+      };
+
       const created = await api.createScenario(payload);
       onCreated(created);
     } catch (err) {
@@ -115,8 +194,8 @@ export const CreateScenarioModal = ({ isOpen, scenarios = [], holdings = [], por
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">Create Scenario</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Plan, simulate and compare portfolio scenarios</p>
+              <h2 className="text-base font-bold text-slate-100">Create Scenario</h2>
+              <p className="text-xs text-slate-400">Clone live holdings, then simulate what-if / forecast / retirement</p>
             </div>
           </div>
           <button
@@ -140,7 +219,7 @@ export const CreateScenarioModal = ({ isOpen, scenarios = [], holdings = [], por
             </label>
             <input
               className={inputClass}
-              placeholder="e.g. Aggressive Growth 2045"
+              placeholder="e.g. Trim NVDA / Aggressive Growth"
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
@@ -168,6 +247,7 @@ export const CreateScenarioModal = ({ isOpen, scenarios = [], holdings = [], por
                 {TYPE_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
+                    type="button"
                     onClick={() => setScenarioType(opt.value)}
                     className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
                       scenarioType === opt.value
@@ -215,15 +295,16 @@ export const CreateScenarioModal = ({ isOpen, scenarios = [], holdings = [], por
                 <FolderTree className="w-4 h-4" />
               </div>
               <div>
-                <p className="text-xs font-semibold text-slate-900 dark:text-slate-100">
-                  Clone current portfolio as starting point
+                <p className="text-xs font-semibold text-slate-100">
+                  Clone current portfolio (live Yahoo prices)
                 </p>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Current portfolio value: ${Number(portfolioValue || 0).toLocaleString()}
+                <p className="text-[11px] text-slate-400">
+                  {(holdings || []).length} holdings · ${Number(portfolioValue || 0).toLocaleString()}
                 </p>
               </div>
             </div>
             <button
+              type="button"
               onClick={() => setCloneCurrent((prev) => !prev)}
               className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 ${
                 cloneCurrent ? 'bg-brand-600' : 'bg-slate-300 dark:bg-slate-700'
@@ -246,12 +327,14 @@ export const CreateScenarioModal = ({ isOpen, scenarios = [], holdings = [], por
           </span>
           <div className="flex gap-2">
             <button
+              type="button"
               onClick={onClose}
               className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300 text-xs font-semibold transition-colors cursor-pointer dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:text-white dark:hover:border-slate-700"
             >
               Cancel
             </button>
             <button
+              type="button"
               onClick={handleCreate}
               disabled={saving}
               className="px-4 py-2 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 text-white font-semibold text-xs shadow-lg shadow-brand-600/30 transition-all disabled:opacity-60 cursor-pointer"
