@@ -28,6 +28,15 @@ spring:
       hibernate:
         format_sql: true
 
+portfolio:
+  market-data:
+    ttl-minutes: 5
+    refresh-ms: 300000
+    curl-fallback: true
+    yfinance-fallback: true
+    yfinance-script: scripts/fetch_yahoo_quote.py
+    cached-price-url: https://c4rm9elh30.execute-api.us-east-1.amazonaws.com/default/cachedPriceData
+
 springdoc:
   api-docs:
     path: /v3/api-docs

@@ -22,15 +22,17 @@ export const PerformanceAreaChart = ({ performance }) => {
 
   const filterHistoryByTimeframe = () => {
     if (history.length <= 1) return history;
-    const count = history.length;
-    switch (timeframe) {
-      case '1m': return history.slice(Math.max(0, count - 4));
-      case '6m': return history.slice(Math.max(0, count - 7));
-      default: return history;
-    }
+    const days = timeframe === '1m' ? 30 : timeframe === '6m' ? 180 : timeframe === '5y' ? 1825 : 365;
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+    const filtered = history.filter((item) => {
+      const d = new Date(item.snapshotDate);
+      return !Number.isNaN(d.getTime()) && d >= cutoff;
+    });
+    return filtered.length > 0 ? filtered : history;
   };
 
-  const chartData = filterHistoryByTimeframe().map(item => ({
+  const chartData = filterHistoryByTimeframe().map((item) => ({
     date: item.snapshotDate,
     value: Number(item.portfolioValue),
     invested: Number(item.investedAmount),
@@ -65,7 +67,7 @@ export const PerformanceAreaChart = ({ performance }) => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
         <div>
           <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Portfolio Performance Curve</h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Historical growth trend and total capital invested over time</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Live Yahoo marks × holdings over time (not seeded demo data)</p>
         </div>
 
         <div className="flex items-center p-1 bg-slate-100 border border-slate-200 rounded-xl dark:bg-slate-900 dark:border-slate-800">
