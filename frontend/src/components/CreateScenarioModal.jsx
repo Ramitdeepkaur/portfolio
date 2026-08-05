@@ -101,27 +101,27 @@ export const CreateScenarioModal = ({ isOpen, scenarios = [], holdings = [], por
   };
 
   const inputClass =
-    'w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-brand-500 transition-colors';
+    'w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-brand-500 transition-colors dark:bg-slate-900 dark:border-slate-800 dark:text-slate-200 dark:placeholder-slate-500';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative w-full max-w-lg bg-slate-950 border border-slate-800 rounded-2xl shadow-2xl shadow-black/50 max-h-[90vh] overflow-y-auto">
+      <div className="relative w-full max-w-lg bg-white border border-slate-200 rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto dark:bg-slate-950 dark:border-slate-800 dark:shadow-black/50">
         {/* Header */}
-        <div className="p-5 border-b border-slate-800 flex items-start justify-between sticky top-0 bg-slate-950 z-10">
+        <div className="p-5 border-b border-slate-200 flex items-start justify-between sticky top-0 bg-white z-10 dark:border-slate-800 dark:bg-slate-950">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-brand-500/10 border border-brand-500/20 text-brand-400">
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-100">Create Scenario</h2>
-              <p className="text-xs text-slate-400">Plan, simulate and compare portfolio scenarios</p>
+              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">Create Scenario</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Plan, simulate and compare portfolio scenarios</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:border-slate-700 transition-colors cursor-pointer"
+            className="p-2 rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-slate-900 hover:border-slate-300 transition-colors cursor-pointer dark:bg-slate-900 dark:border-slate-800 dark:hover:text-white dark:hover:border-slate-700"
           >
             <X className="w-4 h-4" />
           </button>
@@ -129,13 +129,13 @@ export const CreateScenarioModal = ({ isOpen, scenarios = [], holdings = [], por
 
         <div className="p-5 space-y-4">
           {error && (
-            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-400">
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-600 dark:bg-rose-500/10 dark:border-rose-500/20 dark:text-rose-400">
               {error}
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 dark:text-slate-400">
               Scenario Name
             </label>
             <input
@@ -147,7 +147,7 @@ export const CreateScenarioModal = ({ isOpen, scenarios = [], holdings = [], por
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 dark:text-slate-400">
               Description
             </label>
             <textarea
@@ -161,7 +161,7 @@ export const CreateScenarioModal = ({ isOpen, scenarios = [], holdings = [], por
 
           {!duplicating && (
             <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 dark:text-slate-400">
                 Scenario Type
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -171,8 +171,8 @@ export const CreateScenarioModal = ({ isOpen, scenarios = [], holdings = [], por
                     onClick={() => setScenarioType(opt.value)}
                     className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
                       scenarioType === opt.value
-                        ? 'bg-brand-600/15 border-brand-500/40 text-slate-100'
-                        : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                        ? 'bg-brand-600/15 border-brand-500/40 text-slate-900 dark:text-slate-100'
+                        : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-slate-300 dark:bg-slate-900/60 dark:border-slate-800 dark:text-slate-400 dark:hover:border-slate-700'
                     }`}
                   >
                     <span className="block text-xs font-bold">{opt.label}</span>
@@ -184,11 +184,11 @@ export const CreateScenarioModal = ({ isOpen, scenarios = [], holdings = [], por
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 dark:text-slate-400">
               Duplicate From Existing Scenario (optional)
             </label>
             <div className="relative">
-              <Copy className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Copy className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <select
                 className={`${inputClass} pl-9`}
                 value={duplicateFrom}
@@ -202,23 +202,23 @@ export const CreateScenarioModal = ({ isOpen, scenarios = [], holdings = [], por
                 ))}
               </select>
             </div>
-            <p className="text-[11px] text-slate-500 mt-1">
+            <p className="text-[11px] text-slate-500 mt-1 dark:text-slate-500">
               {duplicating
                 ? 'Type and data will be copied from the selected scenario. You can edit them after creation.'
                 : 'Copy the assumptions and settings of an existing scenario as your starting point.'}
             </p>
           </div>
 
-          <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center justify-between gap-3">
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3 dark:bg-slate-900/60 dark:border-slate-800">
             <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
+              <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                 <FolderTree className="w-4 h-4" />
               </div>
               <div>
-                <p className="text-xs font-semibold text-slate-100">
+                <p className="text-xs font-semibold text-slate-900 dark:text-slate-100">
                   Clone current portfolio as starting point
                 </p>
-                <p className="text-[11px] text-slate-400">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
                   Current portfolio value: ${Number(portfolioValue || 0).toLocaleString()}
                 </p>
               </div>
@@ -226,7 +226,7 @@ export const CreateScenarioModal = ({ isOpen, scenarios = [], holdings = [], por
             <button
               onClick={() => setCloneCurrent((prev) => !prev)}
               className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 ${
-                cloneCurrent ? 'bg-brand-600' : 'bg-slate-700'
+                cloneCurrent ? 'bg-brand-600' : 'bg-slate-300 dark:bg-slate-700'
               }`}
               title="Toggle clone current portfolio"
             >
@@ -240,14 +240,14 @@ export const CreateScenarioModal = ({ isOpen, scenarios = [], holdings = [], por
         </div>
 
         {/* Footer */}
-        <div className="p-5 border-t border-slate-800 flex items-center justify-between gap-3 sticky bottom-0 bg-slate-950">
+        <div className="p-5 border-t border-slate-200 flex items-center justify-between gap-3 sticky bottom-0 bg-white dark:border-slate-800 dark:bg-slate-950">
           <span className="text-[11px] text-slate-500">
             {effectiveType ? `New ${effectiveType.replaceAll('_', ' ')} scenario` : ''}
           </span>
           <div className="flex gap-2">
             <button
               onClick={onClose}
-              className="px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 text-xs font-semibold transition-colors cursor-pointer"
+              className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300 text-xs font-semibold transition-colors cursor-pointer dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:text-white dark:hover:border-slate-700"
             >
               Cancel
             </button>

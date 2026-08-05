@@ -75,14 +75,14 @@ const TransactionHistoryPage = () => {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
+      <div className="rounded-2xl border border-slate-200 bg-white/90 p-6 dark:border-slate-800 dark:bg-slate-900/70">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-slate-100">Transaction history</h2>
-            <p className="mt-1 text-sm text-slate-400">Review manual transactions, filter them, and export a CSV snapshot.</p>
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Transaction history</h2>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Review manual transactions, filter them, and export a CSV snapshot.</p>
           </div>
           <div className="flex gap-3">
-            <button onClick={handleExport} className="rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2 text-sm text-slate-200 flex items-center gap-2">
+            <button onClick={handleExport} className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-700 flex items-center gap-2 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
               <Download className="h-4 w-4 text-emerald-400" /> Export CSV
             </button>
             <button onClick={() => setIsModalOpen(true)} className="rounded-xl bg-brand-600 px-3.5 py-2 text-sm font-semibold text-white flex items-center gap-2">
@@ -92,29 +92,29 @@ const TransactionHistoryPage = () => {
         </div>
 
         <div className="mt-5 grid gap-4 md:grid-cols-4">
-          <div className="rounded-xl border border-slate-800 bg-slate-950/80 p-4">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/80">
             <p className="text-xs uppercase tracking-wider text-slate-500">Transactions</p>
-            <p className="mt-1 text-2xl font-semibold text-slate-100">{stats.totalTransactions}</p>
+            <p className="mt-1 text-2xl font-semibold text-slate-900 dark:text-slate-100">{stats.totalTransactions}</p>
           </div>
-          <div className="rounded-xl border border-slate-800 bg-slate-950/80 p-4">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/80">
             <p className="text-xs uppercase tracking-wider text-slate-500">Total volume</p>
             <p className="mt-1 text-2xl font-semibold text-emerald-400">${Number(stats.totalVolume || 0).toFixed(2)}</p>
           </div>
-          <div className="rounded-xl border border-slate-800 bg-slate-950/80 p-4">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/80">
             <p className="text-xs uppercase tracking-wider text-slate-500">Buy volume</p>
-            <p className="mt-1 text-2xl font-semibold text-slate-100">${Number(stats.buyVolume || 0).toFixed(2)}</p>
+            <p className="mt-1 text-2xl font-semibold text-slate-900 dark:text-slate-100">${Number(stats.buyVolume || 0).toFixed(2)}</p>
           </div>
-          <div className="rounded-xl border border-slate-800 bg-slate-950/80 p-4">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/80">
             <p className="text-xs uppercase tracking-wider text-slate-500">Sell volume</p>
-            <p className="mt-1 text-2xl font-semibold text-slate-100">${Number(stats.sellVolume || 0).toFixed(2)}</p>
+            <p className="mt-1 text-2xl font-semibold text-slate-900 dark:text-slate-100">${Number(stats.sellVolume || 0).toFixed(2)}</p>
           </div>
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+      <div className="rounded-2xl border border-slate-200 bg-white/90 p-4 dark:border-slate-800 dark:bg-slate-900/70">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-1 flex-col gap-3 md:flex-row">
-            <div className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-300">
+            <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
               <Filter className="h-4 w-4 text-slate-400" />
               <select value={filters.holding} onChange={(e) => setFilters({ ...filters, holding: e.target.value })} className="bg-transparent outline-none">
                 <option value="all">All holdings</option>
@@ -125,11 +125,11 @@ const TransactionHistoryPage = () => {
                 ))}
               </select>
             </div>
-            <div className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-300">
+            <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
               <Search className="h-4 w-4 text-slate-400" />
               <input value={filters.search} onChange={(e) => setFilters({ ...filters, search: e.target.value })} placeholder="Search notes or ticker" className="bg-transparent outline-none" />
             </div>
-            <div className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-300">
+            <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
               <select value={filters.type} onChange={(e) => setFilters({ ...filters, type: e.target.value })} className="bg-transparent outline-none">
                 <option value="all">All types</option>
                 <option value="BUY">Buy</option>
@@ -143,7 +143,7 @@ const TransactionHistoryPage = () => {
           <select value={`${sort.field}:${sort.order}`} onChange={(e) => {
             const [field, order] = e.target.value.split(':');
             setSort({ field, order });
-          }} className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-300">
+          }} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
             <option value="date:desc">Newest first</option>
             <option value="date:asc">Oldest first</option>
             <option value="amount:desc">Highest amount</option>
@@ -155,7 +155,7 @@ const TransactionHistoryPage = () => {
         <div className="mt-4 overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-800 text-left text-slate-400">
+              <tr className="border-b border-slate-200 text-left text-slate-500 dark:border-slate-800 dark:text-slate-400">
                 <th className="px-3 py-3">Holding</th>
                 <th className="px-3 py-3">Type</th>
                 <th className="px-3 py-3">Date</th>
@@ -169,12 +169,12 @@ const TransactionHistoryPage = () => {
             <tbody>
               {filteredTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="px-3 py-6 text-center text-slate-400">No transactions match the current filters.</td>
+                  <td colSpan="8" className="px-3 py-6 text-center text-slate-500 dark:text-slate-400">No transactions match the current filters.</td>
                 </tr>
               ) : (
                 filteredTransactions.map((tx) => (
-                  <tr key={tx.id} className="border-b border-slate-800/70 text-slate-300">
-                    <td className="px-3 py-3 font-medium text-slate-100">{tx.holding}</td>
+                  <tr key={tx.id} className="border-b border-slate-200/70 text-slate-700 dark:border-slate-800/70 dark:text-slate-300">
+                    <td className="px-3 py-3 font-medium text-slate-900 dark:text-slate-100">{tx.holding}</td>
                     <td className="px-3 py-3">{tx.type}</td>
                     <td className="px-3 py-3">{tx.date}</td>
                     <td className="px-3 py-3">{tx.quantity}</td>
@@ -183,10 +183,10 @@ const TransactionHistoryPage = () => {
                     <td className="px-3 py-3">{tx.notes || '—'}</td>
                     <td className="px-3 py-3">
                       <div className="flex gap-2">
-                        <button onClick={() => { setEditingTransaction(tx); setIsModalOpen(true); }} className="rounded-lg border border-slate-700 p-2 text-slate-300 hover:text-white">
+                        <button onClick={() => { setEditingTransaction(tx); setIsModalOpen(true); }} className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:text-white">
                           <PencilLine className="h-4 w-4" />
                         </button>
-                        <button onClick={() => handleDelete(tx.id)} className="rounded-lg border border-rose-800/50 p-2 text-rose-300 hover:text-rose-200">
+                        <button onClick={() => handleDelete(tx.id)} className="rounded-lg border border-rose-200 p-2 text-rose-500 hover:text-rose-600 dark:border-rose-800/50 dark:text-rose-300 dark:hover:text-rose-200">
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>

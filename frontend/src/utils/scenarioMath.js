@@ -289,6 +289,6 @@ export const typeBadgeClasses = (type) => {
     case 'WHAT_IF': return 'bg-brand-500/10 text-brand-400 border-brand-500/20';
     case 'FORECAST': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
     case 'RETIREMENT': return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
-    default: return 'bg-slate-800 text-slate-300 border-slate-700';
+    default: return 'bg-slate-500/10 text-slate-500 border-slate-500/20';
   }
 };
