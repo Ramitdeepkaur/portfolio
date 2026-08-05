@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import api from '../api/client';
 
 const PortfolioContext = createContext();
@@ -16,9 +16,17 @@ export const PortfolioProvider = ({ children }) => {
     setTimeout(() => setToast(null), 3500);
   };
 
-  const fetchAllData = async () => {
+  const fetchAllData = useCallback(async ({ refreshQuotes = false } = {}) => {
     setLoading(true);
     try {
+      if (refreshQuotes) {
+        try {
+          await api.refreshMarket();
+        } catch (refreshErr) {
+          console.warn('Market quote refresh failed; using cached quotes', refreshErr);
+        }
+      }
+
       const [sumData, holdData, allocData, perfData] = await Promise.all([
         api.getPortfolioSummary(),
         api.getHoldings(),
@@ -35,11 +43,14 @@ export const PortfolioProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchAllData();
-  }, []);
+    // Initial load uses TTL-cached quotes (fetched on demand). Manual refresh forces Yahoo update.
+    fetchAllData({ refreshQuotes: false });
+  }, [fetchAllData]);
+
+  const refreshData = useCallback(() => fetchAllData({ refreshQuotes: true }), [fetchAllData]);
 
   return (
     <PortfolioContext.Provider
@@ -51,7 +62,7 @@ export const PortfolioProvider = ({ children }) => {
         loading,
         toast,
         showToast,
-        refreshData: fetchAllData,
+        refreshData,
       }}
     >
       {children}

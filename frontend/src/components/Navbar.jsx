@@ -1,16 +1,52 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { usePortfolio } from '../context/PortfolioContext';
+import api from '../api/client';
 import { TrendingUp, Sun, Moon, RefreshCw, Plus, FileUp } from 'lucide-react';
+
+const formatPrice = (value) => {
+  const num = Number(value);
+  if (Number.isNaN(num)) return '—';
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
+};
+
+const formatPct = (value) => {
+  const num = Number(value);
+  if (Number.isNaN(num)) return '0.00%';
+  const sign = num > 0 ? '+' : '';
+  return `${sign}${num.toFixed(2)}%`;
+};
 
 export const Navbar = ({ onOpenAddModal, onOpenCsvModal }) => {
   const { theme, toggleTheme } = useTheme();
-  const { refreshData, loading } = usePortfolio();
+  const { holdings, refreshData, loading } = usePortfolio();
+  const [tickerQuotes, setTickerQuotes] = useState([]);
+
+  const stripSymbols = useMemo(() => {
+    const fromHoldings = (holdings || [])
+      .filter((h) => h?.tickerSymbol && String(h.assetType || '').toUpperCase() !== 'CASH')
+      .map((h) => h.tickerSymbol.toUpperCase());
+    const unique = [...new Set(fromHoldings)];
+    if (unique.length >= 3) return unique.slice(0, 3);
+    const defaults = ['AAPL', 'MSFT', 'NVDA'];
+    return [...unique, ...defaults.filter((s) => !unique.includes(s))].slice(0, 3);
+  }, [holdings]);
+
+  useEffect(() => {
+    let cancelled = false;
+    api.getWatchlist(stripSymbols)
+      .then((data) => {
+        if (!cancelled) setTickerQuotes(Array.isArray(data) ? data.slice(0, 3) : []);
+      })
+      .catch(() => {
+        if (!cancelled) setTickerQuotes([]);
+      });
+    return () => { cancelled = true; };
+  }, [stripSymbols, loading]);
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-slate-200/80 bg-white/80 backdrop-blur-xl transition-colors duration-300 dark:border-slate-800/80 dark:bg-slate-950/80">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-        {/* Brand */}
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 via-indigo-500 to-emerald-400 p-0.5 shadow-lg shadow-brand-500/20 flex items-center justify-center flex-shrink-0">
             <div className="w-full h-full bg-white dark:bg-slate-950 rounded-[10px] flex items-center justify-center">
@@ -30,25 +66,28 @@ export const Navbar = ({ onOpenAddModal, onOpenCsvModal }) => {
           </div>
         </div>
 
-        {/* Ticker Quick Strip */}
         <div className="hidden lg:flex items-center gap-6 px-4 py-1.5 rounded-full bg-slate-100/80 border border-slate-200 text-xs dark:bg-slate-900/80 dark:border-slate-800">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-slate-500 dark:text-slate-400">AAPL</span>
-            <span className="text-emerald-600 dark:text-emerald-400 font-mono font-medium">$185.50 (+1.2%)</span>
-          </div>
-          <div className="w-px h-3 bg-slate-200 dark:bg-slate-800" />
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-slate-500 dark:text-slate-400">NVDA</span>
-            <span className="text-emerald-600 dark:text-emerald-400 font-mono font-medium">$125.60 (+3.4%)</span>
-          </div>
-          <div className="w-px h-3 bg-slate-200 dark:bg-slate-800" />
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-slate-500 dark:text-slate-400">MSFT</span>
-            <span className="text-slate-700 dark:text-slate-300 font-mono font-medium">$420.20 (+0.4%)</span>
-          </div>
+          {tickerQuotes.length === 0 ? (
+            <span className="text-slate-400 font-medium">Loading live quotes…</span>
+          ) : (
+            tickerQuotes.map((quote, index) => {
+              const changePct = Number(quote.changePercentage || 0);
+              const isGain = changePct >= 0;
+              return (
+                <React.Fragment key={quote.tickerSymbol}>
+                  {index > 0 && <div className="w-px h-3 bg-slate-200 dark:bg-slate-800" />}
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-slate-500 dark:text-slate-400">{quote.tickerSymbol}</span>
+                    <span className={`font-mono font-medium ${isGain ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                      {formatPrice(quote.currentPrice)} ({formatPct(changePct)})
+                    </span>
+                  </div>
+                </React.Fragment>
+              );
+            })
+          )}
         </div>
 
-        {/* Action Controls */}
         <div className="flex items-center gap-2 sm:gap-3">
           <button
             onClick={() => refreshData()}
