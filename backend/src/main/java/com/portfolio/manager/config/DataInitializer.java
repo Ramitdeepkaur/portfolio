@@ -1,10 +1,8 @@
 package com.portfolio.manager.config;
 
 import com.portfolio.manager.entity.Holding;
-import com.portfolio.manager.entity.PortfolioSnapshot;
 import com.portfolio.manager.entity.Transaction;
 import com.portfolio.manager.repository.HoldingRepository;
-import com.portfolio.manager.repository.PortfolioSnapshotRepository;
 import com.portfolio.manager.repository.TransactionRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
@@ -17,17 +15,16 @@ import java.util.List;
 public class DataInitializer implements CommandLineRunner {
 
     private final HoldingRepository holdingRepository;
-    private final PortfolioSnapshotRepository snapshotRepository;
     private final TransactionRepository transactionRepository;
 
-    public DataInitializer(HoldingRepository holdingRepository, PortfolioSnapshotRepository snapshotRepository, TransactionRepository transactionRepository) {
+    public DataInitializer(HoldingRepository holdingRepository, TransactionRepository transactionRepository) {
         this.holdingRepository = holdingRepository;
-        this.snapshotRepository = snapshotRepository;
         this.transactionRepository = transactionRepository;
     }
 
     @Override
     public void run(String... args) {
+        // Seed holdings / transactions only. Live marks and performance history come from Yahoo Finance.
         if (holdingRepository.count() == 0) {
             List<Holding> seedHoldings = List.of(
                     new Holding(null, "Apple Inc.", "AAPL", "STOCKS", 15.0, new BigDecimal("150.00"), LocalDate.now().minusMonths(14), "Technology", "NASDAQ", "USD"),
@@ -41,20 +38,6 @@ public class DataInitializer implements CommandLineRunner {
                     new Holding(null, "USD Cash Reserve", "CASH", "CASH", 3500.0, new BigDecimal("1.00"), LocalDate.now().minusMonths(24), "Cash & Equivalent", "BANK", "USD")
             );
             holdingRepository.saveAll(seedHoldings);
-        }
-
-        if (snapshotRepository.count() == 0) {
-            LocalDate now = LocalDate.now();
-            List<PortfolioSnapshot> snapshots = List.of(
-                    new PortfolioSnapshot(null, new BigDecimal("18500.00"), new BigDecimal("17000.00"), new BigDecimal("1500.00"), now.minusMonths(12)),
-                    new PortfolioSnapshot(null, new BigDecimal("19200.00"), new BigDecimal("17200.00"), new BigDecimal("2000.00"), now.minusMonths(10)),
-                    new PortfolioSnapshot(null, new BigDecimal("20800.00"), new BigDecimal("17500.00"), new BigDecimal("3300.00"), now.minusMonths(8)),
-                    new PortfolioSnapshot(null, new BigDecimal("22400.00"), new BigDecimal("18000.00"), new BigDecimal("4400.00"), now.minusMonths(6)),
-                    new PortfolioSnapshot(null, new BigDecimal("21900.00"), new BigDecimal("18200.00"), new BigDecimal("3700.00"), now.minusMonths(4)),
-                    new PortfolioSnapshot(null, new BigDecimal("24500.00"), new BigDecimal("18500.00"), new BigDecimal("6000.00"), now.minusMonths(2)),
-                    new PortfolioSnapshot(null, new BigDecimal("26850.00"), new BigDecimal("18850.00"), new BigDecimal("8000.00"), now)
-            );
-            snapshotRepository.saveAll(snapshots);
         }
 
         if (transactionRepository.count() == 0) {

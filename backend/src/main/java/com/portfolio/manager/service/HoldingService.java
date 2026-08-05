@@ -6,6 +6,7 @@ import com.portfolio.manager.dto.HoldingSearchCriteria;
 import com.portfolio.manager.entity.Holding;
 import com.portfolio.manager.entity.MarketData;
 import com.portfolio.manager.entity.Transaction;
+import com.portfolio.manager.market.MarketDataException;
 import com.portfolio.manager.repository.HoldingRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -224,8 +225,16 @@ public class HoldingService {
     }
 
     public HoldingResponseDTO convertToDTO(Holding holding) {
-        MarketData marketData = marketDataService.getOrCreateMarketData(holding.getTickerSymbol());
-        BigDecimal currentPrice = marketData.getCurrentPrice();
+        MarketData marketData = null;
+        try {
+            marketData = marketDataService.getOrCreateMarketData(holding.getTickerSymbol());
+        } catch (MarketDataException ex) {
+            // Yahoo unavailable and no cached quote — value at cost so the portfolio still loads
+        }
+
+        BigDecimal currentPrice = marketData != null && marketData.getCurrentPrice() != null
+                ? marketData.getCurrentPrice()
+                : holding.getPurchasePrice();
 
         BigDecimal qty = BigDecimal.valueOf(holding.getQuantity());
         BigDecimal investedValue = qty.multiply(holding.getPurchasePrice()).setScale(2, RoundingMode.HALF_UP);
@@ -239,7 +248,9 @@ public class HoldingService {
         }
 
         BigDecimal todayChangePercentage = BigDecimal.ZERO;
-        if (marketData.getOpeningPrice() != null && marketData.getOpeningPrice().compareTo(BigDecimal.ZERO) > 0) {
+        if (marketData != null
+                && marketData.getOpeningPrice() != null
+                && marketData.getOpeningPrice().compareTo(BigDecimal.ZERO) > 0) {
             BigDecimal todayChange = currentPrice.subtract(marketData.getOpeningPrice());
             todayChangePercentage = todayChange.multiply(new BigDecimal("100"))
                     .divide(marketData.getOpeningPrice(), 2, RoundingMode.HALF_UP);
