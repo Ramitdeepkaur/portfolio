@@ -178,75 +178,119 @@ export const retirementAnalysis = ({
   };
 };
 
+/* Parse scenario.data whether API returns a JSON string or object */
+export const parseScenarioData = (raw) => {
+  if (!raw) return {};
+  if (typeof raw === 'object') return raw;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+};
+
 /* ---- WHAT-IF analysis on a holdings snapshot ---- */
 export const normalizeHolding = (h) => ({
-  holdingId: h.id ?? null,
+  holdingId: h.id ?? h.holdingId ?? null,
   assetName: h.assetName || h.tickerSymbol || 'Unknown',
-  tickerSymbol: h.tickerSymbol || '',
+  tickerSymbol: (h.tickerSymbol || '').toUpperCase(),
   assetType: h.assetType || 'STOCKS',
   quantity: Number(h.quantity || 0),
   purchasePrice: Number(h.purchasePrice || 0),
-  currentPrice: Number(h.currentPrice || 0),
+  currentPrice: Number(h.currentPrice || h.purchasePrice || 0),
   sector: h.sector || 'General',
 });
 
+const findHoldingRow = (rows, change) => {
+  if (change.holdingId != null && change.holdingId !== '') {
+    const byId = rows.find((r) => String(r.holdingId) === String(change.holdingId));
+    if (byId) return byId;
+  }
+  if (change.tickerSymbol) {
+    return rows.find((r) => r.tickerSymbol === String(change.tickerSymbol).toUpperCase());
+  }
+  return null;
+};
+
+const valuateHoldings = (list) => {
+  let value = 0;
+  let invested = 0;
+  let pl = 0;
+  const per = (list || []).map((row) => {
+    const price = Number(row.markPrice ?? row.currentPrice ?? 0);
+    const qty = Number(row.quantity || 0);
+    const purchase = Number(row.purchasePrice || 0);
+    const rowValue = qty * price;
+    const rowInvested = qty * purchase;
+    const rowPL = rowValue - rowInvested;
+    value += rowValue;
+    invested += rowInvested;
+    pl += rowPL;
+    return { ...row, value: round2(rowValue), invested: round2(rowInvested), pl: round2(rowPL) };
+  });
+  return { value: round2(value), invested: round2(invested), pl: round2(pl), per };
+};
+
 /* Apply change operations to a base holdings snapshot and compute impact */
 export const applyWhatIfChanges = (baseHoldings, changes) => {
-  const rows = (baseHoldings || []).map((h) => ({ ...normalizeHolding(h), isNew: false, op: null, expectedPrice: Number(h.currentPrice || 0) }));
+  const original = (baseHoldings || []).map((h) => {
+    const n = normalizeHolding(h);
+    return { ...n, markPrice: n.currentPrice };
+  });
+  const base = valuateHoldings(original);
+
+  const rows = original.map((h) => ({
+    ...h,
+    isNew: false,
+    op: null,
+    removed: false,
+  }));
 
   (changes || []).forEach((change) => {
     if (change.op === 'ADD') {
-      const existing = rows.find((row) => !row.isNew && row.holdingId === change.holdingId && !change.holdingId);
-      if (!existing) {
+      const ticker = (change.tickerSymbol || '').toUpperCase();
+      const existing = rows.find((row) => row.tickerSymbol === ticker && !row.removed);
+      if (existing) {
+        existing.quantity = Number(existing.quantity || 0) + Number(change.quantity || 0);
+        existing.op = 'ADD';
+        if (change.price != null) {
+          existing.markPrice = Number(change.price);
+        }
+      } else {
+        const price = Number(change.price ?? change.purchasePrice ?? 0);
         rows.push({
           holdingId: null,
-          assetName: change.assetName || change.tickerSymbol || 'New Asset',
-          tickerSymbol: change.tickerSymbol || '',
+          assetName: change.assetName || ticker || 'New Asset',
+          tickerSymbol: ticker,
           assetType: change.assetType || 'STOCKS',
           quantity: Number(change.quantity || 0),
-          purchasePrice: Number(change.purchasePrice ?? change.price ?? 0),
-          currentPrice: Number(change.price || 0),
-          expectedPrice: Number(change.price || 0),
+          purchasePrice: Number(change.purchasePrice ?? price),
+          currentPrice: price,
+          markPrice: price,
           sector: change.sector || 'General',
           isNew: true,
           op: 'ADD',
+          removed: false,
         });
       }
     } else {
-      const row = rows.find((r) => String(r.holdingId) === String(change.holdingId));
+      const row = findHoldingRow(rows, change);
       if (!row) return;
       if (change.op === 'REMOVE') {
         row.removed = true;
+        row.op = 'REMOVE';
       } else if (change.op === 'QUANTITY') {
         row.quantity = Math.max(0, Number(change.quantity || 0));
         row.op = 'QUANTITY';
       } else if (change.op === 'PRICE') {
-        row.expectedPrice = Number(change.expectedPrice ?? change.price ?? 0);
+        row.markPrice = Number(change.expectedPrice ?? change.price ?? 0);
         row.op = 'PRICE';
       }
     }
   });
 
-  const activeRows = rows.filter((r) => !r.removed);
-  const valuate = (list, useExpected) => {
-    let value = 0;
-    let invested = 0;
-    let pl = 0;
-    const per = list.map((row) => {
-      const price = useExpected ? row.expectedPrice : row.currentPrice;
-      const rowValue = row.quantity * price;
-      const rowInvested = row.quantity * row.purchasePrice;
-      const rowPL = rowValue - rowInvested;
-      value += rowValue;
-      invested += rowInvested;
-      pl += rowPL;
-      return { ...row, value: round2(rowValue), invested: round2(rowInvested), pl: round2(rowPL) };
-    });
-    return { value: round2(value), invested: round2(invested), pl: round2(pl), per };
-  };
-
-  const base = valuate(activeRows, false);
-  const projected = valuate(activeRows, true);
+  const projectedRows = rows.filter((r) => !r.removed);
+  const projected = valuateHoldings(projectedRows);
 
   const impactByHolding = projected.per
     .map((row) => {
@@ -258,11 +302,11 @@ export const applyWhatIfChanges = (baseHoldings, changes) => {
         assetName: row.assetName,
         valueDelta: round2(valueDelta),
         plDelta: round2(plDelta),
-        pctOfPortfolio: base.value > 0 ? (row.value / base.value) * 100 : 0,
-        changed: row.isNew || row.removed === false ? row.op : 'UNCHANGED',
+        pctOfPortfolio: base.value > 0 ? round2((row.value / base.value) * 100) : 0,
+        changed: row.op || (row.isNew ? 'ADD' : 'UNCHANGED'),
       };
     })
-    .sort((a, b) => Math.abs(b.plDelta) - Math.abs(a.plDelta));
+    .sort((a, b) => Math.abs(b.valueDelta) - Math.abs(a.valueDelta));
 
   return {
     base,
@@ -272,7 +316,6 @@ export const applyWhatIfChanges = (baseHoldings, changes) => {
       value: round2(projected.value - base.value),
       pl: round2(projected.pl - base.pl),
       pct: base.value > 0 ? round2(((projected.value - base.value) / base.value) * 100) : 0,
-      roi: round2(base.invested > 0 ? (projected.pl / projected.invested) * 100 - (base.invested > 0 ? (base.pl / base.invested) * 100 : 0) : 0),
       holdingsCount: projected.per.length - base.per.length,
     },
   };
