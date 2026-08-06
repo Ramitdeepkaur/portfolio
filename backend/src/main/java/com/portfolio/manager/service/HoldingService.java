@@ -247,7 +247,7 @@ public class HoldingService {
     private static final String CASH_TICKER = "CASH";
 
     @Transactional
-    public SellHoldingResponseDTO sellHolding(Long id, Double quantityToSell) {
+    public SellHoldingResponseDTO sellHolding(Long id, Double quantityToSell, String userNotes) {
         Holding holding = holdingRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Holding not found with id: " + id));
 
@@ -293,7 +293,19 @@ public class HoldingService {
         transaction.setPrice(sellPrice);
         transaction.setAmount(proceeds);
         transaction.setDate(LocalDate.now());
-        transaction.setNotes("Sold via Sell action (realized P/L: " + realizedGain + ")");
+        String profitLossWord = realizedGain.compareTo(BigDecimal.ZERO) >= 0 ? "profit" : "loss";
+        String notesPrefix = String.format(
+                "Sold %s: %s shares at %s (proceeds: %s). Sold at a %s of %s.",
+                holding.getTickerSymbol(),
+                quantityToSell,
+                sellPrice,
+                proceeds,
+                profitLossWord,
+                realizedGain.abs());
+        String transactionNotes = (userNotes != null && !userNotes.trim().isEmpty())
+                ? notesPrefix + " " + userNotes.trim()
+                : notesPrefix;
+        transaction.setNotes(transactionNotes);
         transactionService.createTransaction(transaction);
 
         auditLogService.record(
