@@ -143,6 +143,15 @@ public class HoldingService {
         if (holding.getSector() == null || holding.getSector().isEmpty()) {
             holding.setSector("General");
         }
+
+        boolean isCash = CASH_ASSET_TYPE.equalsIgnoreCase(holding.getAssetType());
+        if (!isCash && holding.getQuantity() != null && holding.getQuantity() > 0 && holding.getPurchasePrice() != null) {
+            BigDecimal cost = BigDecimal.valueOf(holding.getQuantity())
+                    .multiply(holding.getPurchasePrice())
+                    .setScale(2, RoundingMode.HALF_UP);
+            debitCashHolding(cost, holding.getTickerSymbol());
+        }
+
         Holding saved = holdingRepository.save(holding);
 
         if (saved.getQuantity() != null && saved.getQuantity() > 0 && saved.getPurchasePrice() != null) {
@@ -190,12 +199,24 @@ public class HoldingService {
 
         if (originalQuantity != null && details.getQuantity() != null && !originalQuantity.equals(details.getQuantity())) {
             double delta = details.getQuantity() - originalQuantity;
+            BigDecimal price = details.getPurchasePrice() != null ? details.getPurchasePrice() : originalPrice;
+            BigDecimal amount = price.multiply(BigDecimal.valueOf(Math.abs(delta))).setScale(2, RoundingMode.HALF_UP);
+
+            boolean isCash = CASH_ASSET_TYPE.equalsIgnoreCase(updated.getAssetType());
+            if (!isCash) {
+                if (delta > 0) {
+                    debitCashHolding(amount, updated.getTickerSymbol());
+                } else {
+                    creditCashHolding(amount, updated.getTickerSymbol());
+                }
+            }
+
             Transaction transaction = new Transaction();
             transaction.setHolding(updated.getTickerSymbol());
             transaction.setType(delta > 0 ? "BUY" : "SELL");
             transaction.setQuantity(Math.abs(delta));
-            transaction.setPrice(details.getPurchasePrice() != null ? details.getPurchasePrice() : originalPrice);
-            transaction.setAmount(transaction.getPrice().multiply(BigDecimal.valueOf(Math.abs(delta))));
+            transaction.setPrice(price);
+            transaction.setAmount(amount);
             transaction.setDate(details.getPurchaseDate() != null ? details.getPurchaseDate() : LocalDate.now());
             transaction.setNotes(delta > 0 ? "Additional purchase on holding update" : "Partial sell on holding update");
             transactionService.createTransaction(transaction);
@@ -328,6 +349,51 @@ public class HoldingService {
         response.setClosed(closed);
         response.setCashAvailable(cashAvailable);
         return response;
+    }
+
+    private BigDecimal debitCashHolding(BigDecimal cost, String buyTicker) {
+        List<Holding> cashHoldings = holdingRepository.findByAssetTypeIgnoreCase(CASH_ASSET_TYPE)
+                .stream()
+                .sorted(Comparator.comparing(Holding::getId))
+                .collect(Collectors.toList());
+
+        BigDecimal totalCash = cashHoldings.stream()
+                .map(c -> BigDecimal.valueOf(c.getQuantity()))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        if (totalCash.compareTo(cost) < 0) {
+            throw new IllegalArgumentException(
+                    "Insufficient cash balance to complete this purchase. Available cash: "
+                            + totalCash.setScale(2, RoundingMode.HALF_UP)
+                            + ". Please add cash to your portfolio before buying.");
+        }
+
+        BigDecimal remainingToDebit = cost;
+        for (Holding cash : cashHoldings) {
+            if (remainingToDebit.compareTo(BigDecimal.ZERO) <= 0) {
+                break;
+            }
+            String cashBefore = describeHolding(cash);
+            BigDecimal available = BigDecimal.valueOf(cash.getQuantity());
+            BigDecimal deduction = available.min(remainingToDebit);
+            cash.setQuantity(available.subtract(deduction).doubleValue());
+            Holding saved = holdingRepository.save(cash);
+            remainingToDebit = remainingToDebit.subtract(deduction);
+
+            auditLogService.record(
+                    "UPDATE",
+                    "HOLDING",
+                    CASH_TICKER,
+                    "Cash decreased to fund purchase of " + buyTicker,
+                    cashBefore,
+                    describeHolding(saved));
+        }
+
+        BigDecimal total = BigDecimal.ZERO;
+        for (Holding c : holdingRepository.findByAssetTypeIgnoreCase(CASH_ASSET_TYPE)) {
+            total = total.add(BigDecimal.valueOf(c.getQuantity()));
+        }
+        return total.setScale(2, RoundingMode.HALF_UP);
     }
 
     private BigDecimal creditCashHolding(BigDecimal proceeds, String soldTicker) {
