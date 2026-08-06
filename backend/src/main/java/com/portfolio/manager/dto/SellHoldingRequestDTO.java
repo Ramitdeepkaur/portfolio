@@ -9,6 +9,8 @@ public class SellHoldingRequestDTO {
     @Positive(message = "Quantity must be positive")
     private Double quantity;
 
+    private String notes;
+
     public SellHoldingRequestDTO() {
     }
 
@@ -18,5 +20,13 @@ public class SellHoldingRequestDTO {
 
     public void setQuantity(Double quantity) {
         this.quantity = quantity;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
     }
 }

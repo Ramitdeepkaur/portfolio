@@ -38,7 +38,8 @@ const HoldingHistoryPanel = ({ holding, transactions = [], auditLogs = [] }) => 
                     <span className="font-medium text-slate-800 dark:text-slate-200">{tx.type}</span>
                     <span className="text-slate-500 dark:text-slate-400">{tx.date}</span>
                   </div>
-                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">Qty {tx.quantity} • ${tx.amount?.toFixed(2) || '0.00'}</div>
+                   <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">Qty {tx.quantity} • ${tx.amount?.toFixed(2) || '0.00'}</div>
+                   {tx.notes && <div className="mt-1 text-xs text-slate-500 dark:text-slate-400 truncate">{tx.notes}</div>}
                 </div>
               ))
             )}

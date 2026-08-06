@@ -4,12 +4,14 @@ import api from '../api/client';
 
 export const SellHoldingModal = ({ holding, isOpen, onClose, onSuccess }) => {
   const [quantity, setQuantity] = useState('');
+  const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     if (holding) {
       setQuantity(holding.quantity != null ? holding.quantity.toString() : '');
+      setNotes('');
       setError(null);
     }
   }, [holding]);
@@ -53,7 +55,7 @@ export const SellHoldingModal = ({ holding, isOpen, onClose, onSuccess }) => {
 
     setLoading(true);
     try {
-      const response = await api.sellHolding(holding.id, qtyNum);
+       const response = await api.sellHolding(holding.id, qtyNum, notes);
       onSuccess(response);
       onClose();
     } catch (err) {
@@ -180,9 +182,25 @@ export const SellHoldingModal = ({ holding, isOpen, onClose, onSuccess }) => {
                 : 'This will reduce your quantity and keep the remainder invested.'}{' '}
               Final proceeds are calculated using the live price at the time of sale.
             </p>
+           </div>
+
+          <div>
+            <label className={labelClass}>Notes (optional)</label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              maxLength={500}
+              placeholder="Add a note about this sale (e.g. 'Taking profits', 'Stop-loss triggered')"
+              className={`${inputClass} resize-y`}
+            />
+            <p className="text-[11px] text-slate-400 mt-1 block">
+              These notes will be appended to the auto-generated transaction record showing the ticker,
+              quantity, price, proceeds, and realized profit/loss.
+            </p>
           </div>
 
-          {error && (
+           {error && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-xs font-medium dark:bg-rose-500/10 dark:border-rose-500/20 dark:text-rose-400">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
               <span>{error}</span>

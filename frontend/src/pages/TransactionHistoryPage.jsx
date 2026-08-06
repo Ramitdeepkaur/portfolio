@@ -5,8 +5,7 @@ import TransactionModal from '../components/TransactionModal';
 import { usePortfolio } from '../context/PortfolioContext';
 
 const TransactionHistoryPage = () => {
-  const { holdings } = usePortfolio();
-  const [transactions, setTransactions] = useState([]);
+  const { holdings, transactions, loadTransactions } = usePortfolio();
   const [stats, setStats] = useState({ totalTransactions: 0, totalVolume: 0, buyVolume: 0, sellVolume: 0 });
   const [filters, setFilters] = useState({ holding: 'all', type: 'all', search: '' });
   const [sort, setSort] = useState({ field: 'date', order: 'desc' });
@@ -15,12 +14,11 @@ const TransactionHistoryPage = () => {
 
   useEffect(() => {
     const loadData = async () => {
-      const txData = await api.getTransactions();
-      setTransactions(txData);
+      await loadTransactions();
       setStats(await api.getTransactionStats());
     };
     loadData();
-  }, []);
+  }, [loadTransactions]);
 
   const filteredTransactions = useMemo(() => {
     const result = transactions.filter((tx) => {
@@ -30,11 +28,13 @@ const TransactionHistoryPage = () => {
       return matchesHolding && matchesType && matchesSearch;
     });
 
-    result.sort((a, b) => {
+     result.sort((a, b) => {
       const direction = sort.order === 'asc' ? 1 : -1;
       if (sort.field === 'amount') return (Number(a.amount || 0) - Number(b.amount || 0)) * direction;
       if (sort.field === 'type') return a.type.localeCompare(b.type) * direction;
-      return a.date.localeCompare(b.date) * direction;
+      const dateCmp = a.date.localeCompare(b.date) * direction;
+      if (dateCmp !== 0) return dateCmp;
+      return ((b.id || 0) - (a.id || 0)) * (sort.order === 'asc' ? -1 : 1);
     });
 
     return result;
@@ -45,13 +45,7 @@ const TransactionHistoryPage = () => {
       ? await api.updateTransaction(record.id, record)
       : await api.createTransaction(record);
 
-    setTransactions((prev) => {
-      const exists = prev.some((item) => item.id === savedTransaction.id);
-      return exists
-        ? prev.map((item) => (item.id === savedTransaction.id ? savedTransaction : item))
-        : [savedTransaction, ...prev];
-    });
-
+    await loadTransactions();
     setStats(await api.getTransactionStats());
     setIsModalOpen(false);
     setEditingTransaction(null);
@@ -59,7 +53,7 @@ const TransactionHistoryPage = () => {
 
   const handleDelete = async (id) => {
     await api.deleteTransaction(id);
-    setTransactions((prev) => prev.filter((item) => item.id !== id));
+    await loadTransactions();
     setStats(await api.getTransactionStats());
   };
 

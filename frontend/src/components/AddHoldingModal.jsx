@@ -53,6 +53,9 @@ export const AddHoldingModal = ({ isOpen, onClose, onSuccess }) => {
           }));
         } else {
           setFormData(prev => ({ ...prev, purchasePrice: price.toString() }));
+          if (!formData.purchasePrice) {
+            setFormData(prev => ({ ...prev, purchasePrice: price.toString() }));
+          }
         }
       }
     } catch (e) {
@@ -87,11 +90,10 @@ export const AddHoldingModal = ({ isOpen, onClose, onSuccess }) => {
   };
 
   const handleQuantityChange = (value) => {
-    const quantity = Number(value || 0);
     setFormData(prev => {
       const next = { ...prev, quantity: value };
-      if (marketPrice && quantity > 0) {
-        next.purchasePrice = (quantity * marketPrice).toFixed(2).toString();
+      if (marketPrice && !next.purchasePrice) {
+        next.purchasePrice = marketPrice.toString();
       }
       return next;
     });
