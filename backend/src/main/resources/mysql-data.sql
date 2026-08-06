@@ -11,6 +11,7 @@ TRUNCATE TABLE holdings;
 TRUNCATE TABLE market_data;
 TRUNCATE TABLE portfolio_snapshots;
 TRUNCATE TABLE transactions;
+TRUNCATE TABLE audit_logs;
 SET FOREIGN_KEY_CHECKS = 1;
 
 INSERT INTO holdings (asset_name, ticker_symbol, asset_type, quantity, purchase_price, purchase_date, sector, exchange, currency) VALUES

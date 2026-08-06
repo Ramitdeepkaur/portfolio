@@ -27,6 +27,12 @@ class HoldingServiceSearchTest {
     @Mock
     private MarketDataService marketDataService;
 
+    @Mock
+    private TransactionService transactionService;
+
+    @Mock
+    private AuditLogService auditLogService;
+
     @InjectMocks
     private HoldingService holdingService;
 
