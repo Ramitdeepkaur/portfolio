@@ -27,6 +27,18 @@ portfolio:
     yfinance-script: scripts/fetch_yahoo_quote.py
     cached-price-url: https://c4rm9elh30.execute-api.us-east-1.amazonaws.com/default/cachedPriceData
 
+gemini:
+  api-key: ${GEMINI_API_KEY:}
+  model: gemini-2.5-flash
+  timeout-ms: 60000
+
+openai:
+  api-key: ${OPENAI_API_KEY:}
+  model: gpt-4o-mini
+  temperature: 0.7
+  max-tokens: 800
+  timeout-ms: 30000
+
 springdoc:
   api-docs:
     path: /v3/api-docs

@@ -29,7 +29,6 @@ public class GeminiService {
     public record Candidate(Content content) {}
 
     private static final Logger log = LoggerFactory.getLogger(GeminiService.class);
-    private static final String MODEL_NAME = "gemini-2.0-flash";
 
     private final String apiKey;
     private final String model;
@@ -38,7 +37,7 @@ public class GeminiService {
 
     public GeminiService(
             @Value("${gemini.api-key:}") String apiKey,
-            @Value("${gemini.model:gemini-2.0-flash}") String model,
+            @Value("${gemini.model:gemini-2.5-flash}") String model,
             @Value("${gemini.timeout-ms:60000}") long timeoutMs) {
         this.apiKey = apiKey;
         this.model = model;
@@ -49,7 +48,7 @@ public class GeminiService {
         requestFactory.setReadTimeout((int) timeoutMs);
 
         this.restClient = RestClient.builder()
-                .baseUrl("https://generativelanguage.googleapis.com/v1beta/models/" + MODEL_NAME + ":generateContent")
+                .baseUrl("https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent")
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .requestFactory(requestFactory)
                 .build();
@@ -60,7 +59,7 @@ public class GeminiService {
     }
 
     public String getModel() {
-        return MODEL_NAME;
+        return model;
     }
 
     /**
