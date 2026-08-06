@@ -17,6 +17,7 @@ export const AddHoldingModal = ({ isOpen, onClose, onSuccess }) => {
 
   const [loading, setLoading] = useState(false);
   const [lookupPrice, setLookupPrice] = useState(null);
+  const [marketPrice, setMarketPrice] = useState(null);
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -38,15 +39,36 @@ export const AddHoldingModal = ({ isOpen, onClose, onSuccess }) => {
       try {
         const data = await api.getMarketData(formData.tickerSymbol.trim().toUpperCase());
         if (data && data.currentPrice) {
-          setLookupPrice(data.currentPrice);
-          if (!formData.purchasePrice) {
-            setFormData(prev => ({ ...prev, purchasePrice: data.currentPrice.toString() }));
+          const price = Number(data.currentPrice);
+          setLookupPrice(price);
+          setMarketPrice(price);
+
+          const quantity = Number(formData.quantity || 0);
+          if (quantity > 0) {
+            setFormData(prev => ({
+              ...prev,
+              purchasePrice: (quantity * price).toFixed(2).toString(),
+            }));
+          } else if (!formData.purchasePrice) {
+            setFormData(prev => ({ ...prev, purchasePrice: price.toString() }));
           }
         }
       } catch (e) {
         setLookupPrice(null);
+        setMarketPrice(null);
       }
     }
+  };
+
+  const handleQuantityChange = (value) => {
+    const quantity = Number(value || 0);
+    setFormData(prev => {
+      const next = { ...prev, quantity: value };
+      if (marketPrice && quantity > 0) {
+        next.purchasePrice = (quantity * marketPrice).toFixed(2).toString();
+      }
+      return next;
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -172,7 +194,7 @@ export const AddHoldingModal = ({ isOpen, onClose, onSuccess }) => {
                 required
                 placeholder="0.00"
                 value={formData.quantity}
-                onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                onChange={(e) => handleQuantityChange(e.target.value)}
                 className={`${inputClass} font-mono`}
               />
             </div>

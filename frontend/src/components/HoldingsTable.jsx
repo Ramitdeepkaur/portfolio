@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Search, X, ArrowUpDown, ArrowUp, ArrowDown, Edit2, Trash2, TrendingUp, TrendingDown, Eye, Briefcase } from 'lucide-react';
+import { Search, X, ArrowUpDown, ArrowUp, ArrowDown, TrendingUp, TrendingDown, Eye, Briefcase } from 'lucide-react';
 import api from '../api/client';
 
-export const HoldingsTable = ({ holdings, onEdit, onDelete, onViewMarket }) => {
+export const HoldingsTable = ({ holdings, onSell, onViewMarket }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('ALL');
   const [selectedSector, setSelectedSector] = useState('ALL');
@@ -218,7 +218,7 @@ export const HoldingsTable = ({ holdings, onEdit, onDelete, onViewMarket }) => {
               </th>
               <th className="py-3 px-3 w-[9%] cursor-pointer hover:text-slate-900 dark:hover:text-slate-200" onClick={() => handleSort('purchasePrice')}>
                 <div className="flex items-center gap-1">
-                  <span>Avg Buy</span>
+                  <span>Purchase Price</span>
                   <SortIcon field="purchasePrice" />
                 </div>
               </th>
@@ -309,20 +309,16 @@ export const HoldingsTable = ({ holdings, onEdit, onDelete, onViewMarket }) => {
                         >
                           <Eye className="w-3.5 h-3.5" />
                         </button>
-                        <button
-                          onClick={() => onEdit(holding)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-slate-100 transition-colors dark:hover:text-amber-400 dark:hover:bg-slate-900"
-                          title="Edit Holding"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => onDelete(holding.id)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-slate-100 transition-colors dark:hover:text-rose-400 dark:hover:bg-slate-900"
-                          title="Delete Holding"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                         {holding.assetType?.toUpperCase() !== 'CASH' && (
+                           <button
+                             onClick={() => onSell(holding)}
+                             className="inline-flex items-center justify-center rounded-xl bg-gradient-to-b from-emerald-500 to-emerald-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-md shadow-emerald-600/40 transition-all duration-200 hover:from-emerald-400 hover:to-emerald-500 hover:shadow-lg hover:shadow-emerald-600/50 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2"
+                             title="Sell Holding"
+                             aria-label="Sell Holding"
+                           >
+                             SELL
+                           </button>
+                         )}
                       </div>
                     </td>
                   </tr>

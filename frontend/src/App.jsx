@@ -14,19 +14,18 @@ import AnalyticsPage from './pages/AnalyticsPage';
 import MarketWatchPage from './pages/MarketWatchPage';
 
 import AddHoldingModal from './components/AddHoldingModal';
-import EditHoldingModal from './components/EditHoldingModal';
+import SellHoldingModal from './components/SellHoldingModal';
 import CsvModal from './components/CsvModal';
 import StockDetailModal from './components/StockDetailModal';
-import api from './api/client';
 
 const AppContent = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const { toast, showToast, refreshData, deleteHolding } = usePortfolio();
+  const { toast, showToast, refreshData } = usePortfolio();
 
   // Modals state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isCsvModalOpen, setIsCsvModalOpen] = useState(false);
-  const [editingHolding, setEditingHolding] = useState(null);
+  const [sellingHolding, setSellingHolding] = useState(null);
   const [viewingMarketTicker, setViewingMarketTicker] = useState(null);
 
   const handleHoldingCreated = (msg) => {
@@ -34,21 +33,15 @@ const AppContent = () => {
     refreshData();
   };
 
-  const handleHoldingUpdated = (msg) => {
-    showToast(msg || 'Holding updated successfully!');
-    refreshData();
-  };
+  const formatMoney = (val) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val || 0);
 
-  const handleDeleteHolding = async (id) => {
-    if (window.confirm('Are you sure you want to delete this investment holding?')) {
-      try {
-        await api.deleteHolding(id);
-        showToast('Holding removed from portfolio', 'success');
-        refreshData();
-      } catch (err) {
-        showToast('Failed to delete holding', 'error');
-      }
-    }
+  const handleHoldingSold = (response) => {
+    showToast(
+      `Sold ${response.quantitySold} shares of ${response.tickerSymbol} for ${formatMoney(response.proceeds)} — cash updated.`,
+      'success'
+    );
+    refreshData();
   };
 
   return (
@@ -65,8 +58,7 @@ const AppContent = () => {
           {activeTab === 'dashboard' && (
             <DashboardPage
               onOpenAddModal={() => setIsAddModalOpen(true)}
-              onEditHolding={(h) => setEditingHolding(h)}
-              onDeleteHolding={handleDeleteHolding}
+              onSellHolding={(h) => setSellingHolding(h)}
               onViewMarket={(t) => setViewingMarketTicker(t)}
             />
           )}
@@ -75,8 +67,7 @@ const AppContent = () => {
             <HoldingsPage
               onOpenAddModal={() => setIsAddModalOpen(true)}
               onOpenCsvModal={() => setIsCsvModalOpen(true)}
-              onEditHolding={(h) => setEditingHolding(h)}
-              onDeleteHolding={handleDeleteHolding}
+              onSellHolding={(h) => setSellingHolding(h)}
               onViewMarket={(t) => setViewingMarketTicker(t)}
             />
           )}
@@ -102,11 +93,11 @@ const AppContent = () => {
         onSuccess={handleHoldingCreated}
       />
 
-      <EditHoldingModal
-        holding={editingHolding}
-        isOpen={Boolean(editingHolding)}
-        onClose={() => setEditingHolding(null)}
-        onSuccess={handleHoldingUpdated}
+      <SellHoldingModal
+        holding={sellingHolding}
+        isOpen={Boolean(sellingHolding)}
+        onClose={() => setSellingHolding(null)}
+        onSuccess={handleHoldingSold}
       />
 
       <CsvModal
