@@ -5,7 +5,7 @@ import HoldingHistoryPanel from '../components/HoldingHistoryPanel';
 import { Plus, FileUp } from 'lucide-react';
 import api from '../api/client';
 
-export const HoldingsPage = ({ onOpenAddModal, onOpenCsvModal, onSellHolding, onViewMarket }) => {
+export const HoldingsPage = ({ onOpenAddModal, onOpenCsvModal, onEditHolding, onDeleteHolding, onViewMarket }) => {
   const { holdings, summary } = usePortfolio();
   const [selectedHoldingId, setSelectedHoldingId] = useState(holdings[0]?.id || '');
   const [transactions, setTransactions] = useState([]);
@@ -56,7 +56,8 @@ export const HoldingsPage = ({ onOpenAddModal, onOpenCsvModal, onSellHolding, on
 
       <HoldingsTable
         holdings={holdings}
-        onSell={onSellHolding}
+        onEdit={onEditHolding}
+        onDelete={onDeleteHolding}
         onViewMarket={onViewMarket}
       />
 
