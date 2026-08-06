@@ -13,9 +13,11 @@ import java.util.stream.Collectors;
 public class ScenarioService {
 
     private final ScenarioRepository scenarioRepository;
+    private final AuditLogService auditLogService;
 
-    public ScenarioService(ScenarioRepository scenarioRepository) {
+    public ScenarioService(ScenarioRepository scenarioRepository, AuditLogService auditLogService) {
         this.scenarioRepository = scenarioRepository;
+        this.auditLogService = auditLogService;
     }
 
     @Transactional(readOnly = true)
@@ -39,18 +41,34 @@ public class ScenarioService {
     @Transactional
     public ScenarioDTO createScenario(Scenario scenario) {
         Scenario saved = scenarioRepository.save(scenario);
+        auditLogService.record(
+                "CREATE",
+                "SCENARIO",
+                saved.getName(),
+                "Created scenario " + saved.getName() + " (" + saved.getScenarioType() + ")",
+                "—",
+                describeScenario(saved));
         return toDto(saved);
     }
 
     @Transactional
     public ScenarioDTO updateScenario(Long id, Scenario details) {
         Scenario existing = getScenario(id);
+        String before = describeScenario(existing);
         existing.setName(details.getName());
         existing.setDescription(details.getDescription());
         existing.setScenarioType(details.getScenarioType());
         existing.setBasePortfolioValue(details.getBasePortfolioValue());
         existing.setData(details.getData());
-        return toDto(scenarioRepository.save(existing));
+        Scenario saved = scenarioRepository.save(existing);
+        auditLogService.record(
+                "UPDATE",
+                "SCENARIO",
+                saved.getName(),
+                "Updated scenario " + saved.getName(),
+                before,
+                describeScenario(saved));
+        return toDto(saved);
     }
 
     @Transactional
@@ -62,12 +80,38 @@ public class ScenarioService {
         copy.setScenarioType(source.getScenarioType());
         copy.setBasePortfolioValue(source.getBasePortfolioValue());
         copy.setData(source.getData());
-        return toDto(scenarioRepository.save(copy));
+        Scenario saved = scenarioRepository.save(copy);
+        auditLogService.record(
+                "CREATE",
+                "SCENARIO",
+                saved.getName(),
+                "Duplicated scenario from " + source.getName(),
+                describeScenario(source),
+                describeScenario(saved));
+        return toDto(saved);
     }
 
     @Transactional
     public void deleteScenario(Long id) {
+        Scenario existing = getScenario(id);
+        String before = describeScenario(existing);
+        String name = existing.getName();
         scenarioRepository.deleteById(id);
+        auditLogService.record(
+                "DELETE",
+                "SCENARIO",
+                name,
+                "Deleted scenario " + name,
+                before,
+                "—");
+    }
+
+    private String describeScenario(Scenario scenario) {
+        return String.format(
+                "%s [%s] base=%s",
+                scenario.getName(),
+                scenario.getScenarioType(),
+                scenario.getBasePortfolioValue());
     }
 
     private Scenario getScenario(Long id) {

@@ -10,7 +10,6 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { projectForecast, retirementAnalysis, formatCurrency, parseScenarioData } from '../utils/scenarioMath';
-import { projectForecast, retirementAnalysis, formatCurrency } from '../utils/scenarioMath';
 import { useTheme } from '../context/ThemeContext';
 
 const PALETTE = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#06b6d4', '#8b5cf6', '#f43f5e', '#84cc16'];

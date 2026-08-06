@@ -66,6 +66,8 @@ public class YahooFinanceClient {
     private final String yfinanceScript;
     private final Object rateLock = new Object();
     private long lastRequestAtMs;
+    private volatile String resolvedPythonCommand;
+    private volatile String resolvedCurlCommand;
 
     public YahooFinanceClient(
             @Value("${portfolio.market-data.cached-price-url:https://c4rm9elh30.execute-api.us-east-1.amazonaws.com/default/cachedPriceData}")
@@ -421,8 +423,13 @@ public class YahooFinanceClient {
             if (script == null) {
                 return Optional.empty();
             }
+            String python = resolvePythonCommand();
+            if (python == null) {
+                log.warn("No python/python3/py found on PATH; cannot use yfinance helper");
+                return Optional.empty();
+            }
             throttle();
-            ProcessBuilder pb = new ProcessBuilder("python3", script.toAbsolutePath().toString(), ticker);
+            ProcessBuilder pb = new ProcessBuilder(python, script.toAbsolutePath().toString(), ticker);
             pb.redirectErrorStream(true);
             Process process = pb.start();
             String body = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8).trim();
@@ -471,9 +478,13 @@ public class YahooFinanceClient {
                     : days <= 400 ? "1y"
                     : "5y";
 
+            String python = resolvePythonCommand();
+            if (python == null) {
+                return Collections.emptyList();
+            }
             throttle();
             ProcessBuilder pb = new ProcessBuilder(
-                    "python3", script.toAbsolutePath().toString(), "--history", ticker, period
+                    python, script.toAbsolutePath().toString(), "--history", ticker, period
             );
             pb.redirectErrorStream(true);
             Process process = pb.start();
@@ -510,6 +521,32 @@ public class YahooFinanceClient {
             log.warn("yfinance history failed for {}: {}", ticker, ex.getMessage());
             return Collections.emptyList();
         }
+    }
+
+    /**
+     * Windows typically exposes {@code python} or the {@code py} launcher, not {@code python3}.
+     */
+    private String resolvePythonCommand() {
+        if (resolvedPythonCommand != null) {
+            return resolvedPythonCommand.isEmpty() ? null : resolvedPythonCommand;
+        }
+        for (String candidate : new String[] {"python3", "python", "py"}) {
+            try {
+                ProcessBuilder pb = new ProcessBuilder(candidate, "--version");
+                pb.redirectErrorStream(true);
+                Process process = pb.start();
+                boolean finished = process.waitFor(5, TimeUnit.SECONDS);
+                if (finished && process.exitValue() == 0) {
+                    resolvedPythonCommand = candidate;
+                    log.info("Using '{}' for yfinance helper", candidate);
+                    return candidate;
+                }
+            } catch (Exception ignored) {
+                // try next candidate
+            }
+        }
+        resolvedPythonCommand = "";
+        return null;
     }
 
     private Path resolveYfinanceScript() {
@@ -595,10 +632,14 @@ public class YahooFinanceClient {
     }
 
     private Optional<String> fetchViaCurl(String url) {
+        String curl = resolveCurlCommand();
+        if (curl == null) {
+            return Optional.empty();
+        }
         try {
             throttle();
             ProcessBuilder pb = new ProcessBuilder(
-                    "/usr/bin/curl", "-sL",
+                    curl, "-sL",
                     "-A", USER_AGENT,
                     "-H", "Accept: application/json",
                     "--max-time", "15",
@@ -624,6 +665,29 @@ public class YahooFinanceClient {
             log.debug("curl fallback failed: {}", ex.getMessage());
             return Optional.empty();
         }
+    }
+
+    /** Prefer PATH {@code curl} (works on Windows + macOS); fall back to macOS absolute path. */
+    private String resolveCurlCommand() {
+        if (resolvedCurlCommand != null) {
+            return resolvedCurlCommand.isEmpty() ? null : resolvedCurlCommand;
+        }
+        for (String candidate : new String[] {"curl", "curl.exe", "/usr/bin/curl"}) {
+            try {
+                ProcessBuilder pb = new ProcessBuilder(candidate, "--version");
+                pb.redirectErrorStream(true);
+                Process process = pb.start();
+                boolean finished = process.waitFor(5, TimeUnit.SECONDS);
+                if (finished && process.exitValue() == 0) {
+                    resolvedCurlCommand = candidate;
+                    return candidate;
+                }
+            } catch (Exception ignored) {
+                // try next
+            }
+        }
+        resolvedCurlCommand = "";
+        return null;
     }
 
     private void throttle() {
