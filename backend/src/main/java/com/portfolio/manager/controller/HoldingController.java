@@ -3,6 +3,8 @@ package com.portfolio.manager.controller;
 import com.portfolio.manager.dto.FilterOptionsDTO;
 import com.portfolio.manager.dto.HoldingResponseDTO;
 import com.portfolio.manager.dto.HoldingSearchCriteria;
+import com.portfolio.manager.dto.SellHoldingRequestDTO;
+import com.portfolio.manager.dto.SellHoldingResponseDTO;
 import com.portfolio.manager.entity.Holding;
 import com.portfolio.manager.service.CsvExportImportService;
 import com.portfolio.manager.service.HoldingService;
@@ -97,6 +99,12 @@ public class HoldingController {
     public ResponseEntity<Void> deleteHolding(@PathVariable Long id) {
         holdingService.deleteHolding(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/sell")
+    @Operation(summary = "Sell a quantity of a holding and credit the proceeds to cash")
+    public ResponseEntity<SellHoldingResponseDTO> sellHolding(@PathVariable Long id, @Valid @RequestBody SellHoldingRequestDTO request) {
+        return ResponseEntity.ok(holdingService.sellHolding(id, request.getQuantity()));
     }
 
     @GetMapping("/export/csv")

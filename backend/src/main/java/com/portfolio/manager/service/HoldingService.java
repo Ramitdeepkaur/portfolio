@@ -3,6 +3,7 @@ package com.portfolio.manager.service;
 import com.portfolio.manager.dto.FilterOptionsDTO;
 import com.portfolio.manager.dto.HoldingResponseDTO;
 import com.portfolio.manager.dto.HoldingSearchCriteria;
+import com.portfolio.manager.dto.SellHoldingResponseDTO;
 import com.portfolio.manager.entity.Holding;
 import com.portfolio.manager.entity.MarketData;
 import com.portfolio.manager.entity.Transaction;
@@ -241,6 +242,139 @@ public class HoldingService {
                 "—");
     }
 
+    private static final double QUANTITY_EPSILON = 1e-6;
+    private static final String CASH_ASSET_TYPE = "CASH";
+    private static final String CASH_TICKER = "CASH";
+
+    @Transactional
+    public SellHoldingResponseDTO sellHolding(Long id, Double quantityToSell) {
+        Holding holding = holdingRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Holding not found with id: " + id));
+
+        if (CASH_ASSET_TYPE.equalsIgnoreCase(holding.getAssetType())) {
+            throw new IllegalArgumentException("Cash holdings cannot be sold");
+        }
+        if (quantityToSell == null || quantityToSell <= 0) {
+            throw new IllegalArgumentException("Sell quantity must be greater than zero");
+        }
+        if (quantityToSell > holding.getQuantity() + QUANTITY_EPSILON) {
+            throw new IllegalArgumentException(
+                    "Cannot sell more than you currently hold (" + holding.getQuantity() + " available)");
+        }
+
+        String before = describeHolding(holding);
+        MarketData marketData = resolveMarketData(holding.getTickerSymbol());
+        BigDecimal sellPrice = marketData != null && marketData.getCurrentPrice() != null
+                ? marketData.getCurrentPrice()
+                : holding.getPurchasePrice();
+
+        BigDecimal proceeds = BigDecimal.valueOf(quantityToSell)
+                .multiply(sellPrice)
+                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal realizedGain = proceeds
+                .subtract(BigDecimal.valueOf(quantityToSell).multiply(holding.getPurchasePrice()))
+                .setScale(2, RoundingMode.HALF_UP);
+
+        boolean closed = quantityToSell >= holding.getQuantity() - QUANTITY_EPSILON;
+        double remainingQuantity;
+        if (closed) {
+            holdingRepository.delete(holding);
+            remainingQuantity = 0.0;
+        } else {
+            holding.setQuantity(holding.getQuantity() - quantityToSell);
+            holdingRepository.save(holding);
+            remainingQuantity = holding.getQuantity();
+        }
+
+        Transaction transaction = new Transaction();
+        transaction.setHolding(holding.getTickerSymbol());
+        transaction.setType("SELL");
+        transaction.setQuantity(quantityToSell);
+        transaction.setPrice(sellPrice);
+        transaction.setAmount(proceeds);
+        transaction.setDate(LocalDate.now());
+        transaction.setNotes("Sold via Sell action (realized P/L: " + realizedGain + ")");
+        transactionService.createTransaction(transaction);
+
+        auditLogService.record(
+                closed ? "DELETE" : "UPDATE",
+                "HOLDING",
+                holding.getTickerSymbol(),
+                "Sold " + quantityToSell + " of " + holding.getTickerSymbol() + " for " + proceeds,
+                before,
+                closed ? "—" : describeHolding(holding));
+
+        BigDecimal cashAvailable = creditCashHolding(proceeds, holding.getTickerSymbol());
+
+        SellHoldingResponseDTO response = new SellHoldingResponseDTO();
+        response.setTickerSymbol(holding.getTickerSymbol());
+        response.setQuantitySold(quantityToSell);
+        response.setPricePerShare(sellPrice);
+        response.setProceeds(proceeds);
+        response.setRealizedGain(realizedGain);
+        response.setRemainingQuantity(remainingQuantity);
+        response.setClosed(closed);
+        response.setCashAvailable(cashAvailable);
+        return response;
+    }
+
+    private BigDecimal creditCashHolding(BigDecimal proceeds, String soldTicker) {
+        List<Holding> cashHoldings = holdingRepository.findByAssetTypeIgnoreCase(CASH_ASSET_TYPE);
+
+        if (cashHoldings.isEmpty()) {
+            Holding cash = new Holding();
+            cash.setAssetName("Cash");
+            cash.setTickerSymbol(CASH_TICKER);
+            cash.setAssetType(CASH_ASSET_TYPE);
+            cash.setQuantity(proceeds.doubleValue());
+            cash.setPurchasePrice(BigDecimal.ONE.setScale(2, RoundingMode.HALF_UP));
+            cash.setPurchaseDate(LocalDate.now());
+            cash.setSector("Cash & Equivalent");
+            cash.setExchange("BANK");
+            cash.setCurrency("USD");
+            Holding saved = holdingRepository.save(cash);
+
+            auditLogService.record(
+                    "CREATE",
+                    "HOLDING",
+                    CASH_TICKER,
+                    "Created cash holding from sale proceeds of " + soldTicker,
+                    "—",
+                    describeHolding(saved));
+
+            return BigDecimal.valueOf(saved.getQuantity()).setScale(2, RoundingMode.HALF_UP);
+        }
+
+        Holding cash = cashHoldings.stream()
+                .min(Comparator.comparing(Holding::getId))
+                .orElseThrow();
+        String cashBefore = describeHolding(cash);
+        cash.setQuantity(cash.getQuantity() + proceeds.doubleValue());
+        Holding saved = holdingRepository.save(cash);
+
+        auditLogService.record(
+                "UPDATE",
+                "HOLDING",
+                CASH_TICKER,
+                "Cash increased by proceeds from selling " + soldTicker,
+                cashBefore,
+                describeHolding(saved));
+
+        BigDecimal total = BigDecimal.ZERO;
+        for (Holding c : holdingRepository.findByAssetTypeIgnoreCase(CASH_ASSET_TYPE)) {
+            total = total.add(BigDecimal.valueOf(c.getQuantity()));
+        }
+        return total.setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private MarketData resolveMarketData(String tickerSymbol) {
+        try {
+            return marketDataService.getOrCreateMarketData(tickerSymbol);
+        } catch (MarketDataException ex) {
+            return null;
+        }
+    }
+
     private String describeHolding(Holding holding) {
         return String.format(
                 Locale.US,
@@ -281,12 +415,7 @@ public class HoldingService {
     }
 
     public HoldingResponseDTO convertToDTO(Holding holding) {
-        MarketData marketData = null;
-        try {
-            marketData = marketDataService.getOrCreateMarketData(holding.getTickerSymbol());
-        } catch (MarketDataException ex) {
-            // Yahoo unavailable and no cached quote — value at cost so the portfolio still loads
-        }
+        MarketData marketData = resolveMarketData(holding.getTickerSymbol());
 
         BigDecimal currentPrice = marketData != null && marketData.getCurrentPrice() != null
                 ? marketData.getCurrentPrice()

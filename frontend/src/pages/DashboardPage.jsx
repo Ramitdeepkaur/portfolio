@@ -46,7 +46,7 @@ const loadLayout = () => {
   return DEFAULT_LAYOUT;
 };
 
-export const DashboardPage = ({ onOpenAddModal, onEditHolding, onDeleteHolding, onViewMarket }) => {
+export const DashboardPage = ({ onOpenAddModal, onSellHolding, onViewMarket }) => {
   const { summary, holdings, allocation, performance, loading } = usePortfolio();
   const [layout, setLayout] = useState(loadLayout);
   const [customizing, setCustomizing] = useState(false);
@@ -215,8 +215,7 @@ export const DashboardPage = ({ onOpenAddModal, onEditHolding, onDeleteHolding, 
         return (
           <HoldingsTable
             holdings={holdings}
-            onEdit={onEditHolding}
-            onDelete={onDeleteHolding}
+            onSell={onSellHolding}
             onViewMarket={onViewMarket}
           />
         );
