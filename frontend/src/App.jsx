@@ -52,7 +52,7 @@ const AppContent = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-dz-black text-white flex flex-col font-sans">
       <Navbar
         onOpenAddModal={() => setIsAddModalOpen(true)}
         onOpenCsvModal={() => setIsCsvModalOpen(true)}

@@ -19,18 +19,16 @@ const formatPct = (value) => {
 
 export const MarketWatchPage = () => {
   const { holdings } = usePortfolio();
-  const [watchlist, setWatchlist] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [watchlist, setWatchlist]         = useState([]);
+  const [loading, setLoading]             = useState(true);
+  const [error, setError]                 = useState(null);
   const [selectedTicker, setSelectedTicker] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery]     = useState('');
 
   const holdingNames = useMemo(() => {
     const map = {};
     (holdings || []).forEach((h) => {
-      if (h?.tickerSymbol) {
-        map[h.tickerSymbol.toUpperCase()] = h.assetName || h.tickerSymbol;
-      }
+      if (h?.tickerSymbol) map[h.tickerSymbol.toUpperCase()] = h.assetName || h.tickerSymbol;
     });
     return map;
   }, [holdings]);
@@ -42,7 +40,6 @@ export const MarketWatchPage = () => {
       const data = await api.getWatchlist();
       setWatchlist(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error('Failed to load watchlist', err);
       setError('Could not load live market data');
       setWatchlist([]);
     } finally {
@@ -50,113 +47,131 @@ export const MarketWatchPage = () => {
     }
   }, []);
 
-  useEffect(() => {
-    loadWatchlist();
-  }, [loadWatchlist]);
+  useEffect(() => { loadWatchlist(); }, [loadWatchlist]);
 
   const filteredWatchlist = watchlist.filter((item) => {
     const ticker = (item.tickerSymbol || '').toLowerCase();
-    const name = (holdingNames[item.tickerSymbol] || item.tickerSymbol || '').toLowerCase();
-    const q = searchQuery.toLowerCase();
+    const name   = (holdingNames[item.tickerSymbol] || item.tickerSymbol || '').toLowerCase();
+    const q      = searchQuery.toLowerCase();
     return ticker.includes(q) || name.includes(q);
   });
 
   return (
     <div className="space-y-6">
-      <div className="glass-card rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* ── Header ─────────────────────────────────────────────── */}
+      <div className="glass-card rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-            <LineChart className="w-5 h-5 text-brand-600 dark:text-brand-400" />
-            <span>Market Watch & Historical Tracking</span>
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <LineChart className="w-5 h-5 text-dz-amber" />
+            Market Watch
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Live Yahoo Finance quotes via the portfolio API — OHLC, day change, and multi-period charts
+          <p className="text-xs text-dz-muted mt-0.5">
+            Live Yahoo Finance quotes — OHLC, day change & multi-period charts
           </p>
         </div>
 
         <div className="flex items-center gap-3 w-full md:w-auto">
-          <div className="relative flex-1 md:w-72">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          {/* Search */}
+          <div className="relative flex-1 md:w-64">
+            <Search className="w-3.5 h-3.5 text-dz-muted absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search symbol..."
+              placeholder="Search symbol…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-white border border-slate-200 text-xs text-slate-900 placeholder-slate-400 focus:border-brand-500 focus:outline-none dark:bg-slate-900 dark:border-slate-800 dark:text-slate-100 dark:placeholder-slate-500"
+              className="dz-input pl-9 w-full"
             />
           </div>
+
+          {/* Refresh */}
           <button
             type="button"
             onClick={loadWatchlist}
             disabled={loading}
-            className="inline-flex items-center gap-2 px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:border-brand-400 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-200"
+            className="btn-secondary text-xs"
             title="Refresh quotes"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </button>
         </div>
       </div>
 
+      {/* ── Error ── */}
       {error && (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">
+        <div className="rounded-xl border border-rose-500/30 bg-rose-500/8 px-4 py-3 text-sm text-rose-400"
+          style={{ background: 'rgba(239,68,68,0.06)' }}>
           {error}
         </div>
       )}
 
+      {/* ── Loading state ── */}
       {loading && watchlist.length === 0 ? (
-        <div className="glass-card rounded-2xl py-14 flex flex-col items-center justify-center text-center gap-3">
-          <RefreshCw className="w-6 h-6 text-brand-500 animate-spin" />
-          <p className="font-semibold text-slate-700 dark:text-slate-200">Loading live quotes…</p>
+        <div className="glass-card rounded-2xl py-16 flex flex-col items-center justify-center gap-3">
+          <RefreshCw className="w-6 h-6 text-dz-amber animate-spin" />
+          <p className="font-semibold text-white text-sm">Loading live quotes…</p>
         </div>
       ) : filteredWatchlist.length === 0 ? (
-        <div className="glass-card rounded-2xl py-14 flex flex-col items-center justify-center text-center gap-3">
-          <div className="w-14 h-14 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center dark:bg-slate-900 dark:border-slate-800">
-            <LineChart className="w-6 h-6 text-slate-400" />
+        <div className="glass-card rounded-2xl py-16 flex flex-col items-center justify-center gap-3">
+          <div className="w-14 h-14 rounded-2xl bg-dz-dark border border-dz-border flex items-center justify-center">
+            <LineChart className="w-6 h-6 text-dz-bench" />
           </div>
-          <p className="font-semibold text-slate-700 dark:text-slate-200">No symbols match your search</p>
-          <p className="text-slate-400 text-xs">Try a different ticker, or refresh the watchlist.</p>
+          <p className="font-semibold text-white text-sm">No symbols match your search</p>
+          <p className="text-dz-muted text-xs">Try a different ticker or refresh.</p>
         </div>
       ) : (
+        /* ── Ticker Grid ── */
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {filteredWatchlist.map((item) => {
             const changePct = Number(item.changePercentage || 0);
-            const isGain = changePct >= 0;
-            const name = holdingNames[item.tickerSymbol] || item.tickerSymbol;
+            const isGain    = changePct >= 0;
+            const name      = holdingNames[item.tickerSymbol] || item.tickerSymbol;
+
             return (
               <div
                 key={item.tickerSymbol}
                 onClick={() => setSelectedTicker(item.tickerSymbol)}
-                className="glass-card rounded-2xl p-5 hover:border-brand-400/50 cursor-pointer transition-all duration-300 group space-y-3 hover:-translate-y-0.5 dark:hover:border-brand-500/50"
+                className="glass-card-hover rounded-2xl p-5 cursor-pointer group space-y-3"
               >
+                {/* Top row */}
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 font-bold flex items-center justify-center font-mono text-sm flex-shrink-0 transition-transform group-hover:scale-105 dark:bg-slate-900 dark:border-slate-800">
-                      <span className="text-brand-600 dark:text-brand-400">{(item.tickerSymbol || '').substring(0, 3)}</span>
+                    {/* Ticker icon */}
+                    <div className="w-10 h-10 rounded-xl bg-dz-dark border border-dz-border font-bold flex items-center justify-center font-mono text-xs flex-shrink-0 group-hover:border-dz-border2 transition-colors">
+                      <span className="text-dz-amber">{(item.tickerSymbol || '').substring(0, 3)}</span>
                     </div>
                     <div className="min-w-0">
-                      <h4 className="font-bold text-slate-900 dark:text-slate-100 text-sm group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors truncate">
+                      <h4 className="font-bold text-white text-sm truncate group-hover:text-dz-amber transition-colors">
                         {item.tickerSymbol}
                       </h4>
-                      <p className="text-[11px] text-slate-400 truncate">{name}</p>
+                      <p className="text-[11px] text-dz-muted truncate">{name}</p>
                     </div>
                   </div>
 
-                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold flex-shrink-0 ${isGain ? 'bg-emerald-50 text-emerald-600 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20' : 'bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20'}`}>
+                  {/* Change badge */}
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border flex-shrink-0 ${
+                    isGain
+                      ? 'bg-dz-green/10 text-dz-green2 border-dz-green/20'
+                      : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                  }`}>
                     {isGain ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                    <span>{formatPct(changePct)}</span>
+                    {formatPct(changePct)}
                   </span>
                 </div>
 
-                <div className="flex items-end justify-between pt-2 border-t border-slate-200 dark:border-slate-800/80">
+                {/* Bottom row */}
+                <div className="flex items-end justify-between pt-2.5 border-t border-dz-border">
                   <div>
-                    <span className="text-[10px] text-slate-400 uppercase block">Current Quote</span>
-                    <span className="text-lg font-bold text-slate-900 dark:text-slate-100 font-mono">
+                    <span className="text-[10px] text-dz-muted uppercase tracking-wider block">Quote</span>
+                    <span className="text-lg font-bold text-white font-mono">
                       {formatCurrency(item.currentPrice)}
                     </span>
                   </div>
-                  <button type="button" className="p-2 rounded-xl bg-slate-100 text-slate-500 group-hover:text-white group-hover:bg-brand-600 transition-colors dark:bg-slate-900 dark:text-slate-400 dark:group-hover:text-white dark:group-hover:bg-brand-600">
-                    <Eye className="w-4 h-4" />
+                  <button
+                    type="button"
+                    className="p-2 rounded-xl bg-dz-dark border border-dz-border text-dz-muted group-hover:text-white group-hover:border-dz-amber/30 group-hover:bg-dz-amber/10 transition-all"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>

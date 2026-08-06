@@ -7,28 +7,21 @@ import HoldingsTable from '../components/HoldingsTable';
 import DashboardWidgetShell from '../components/DashboardWidgetShell';
 import DashboardCustomizer from '../components/DashboardCustomizer';
 import {
-  DollarSign,
-  TrendingUp,
-  Briefcase,
-  Wallet,
-  Flame,
-  AlertCircle,
-  LayoutDashboard,
-  RotateCcw,
-  SlidersHorizontal,
+  DollarSign, TrendingUp, Briefcase, Wallet,
+  Flame, AlertCircle, LayoutDashboard, RotateCcw, SlidersHorizontal,
 } from 'lucide-react';
 
 const STORAGE_KEY = 'foliotrack:dashboard-layout:v1';
 
 const DEFAULT_LAYOUT = [
-  { id: 'metric-portfolio', title: 'Total Portfolio Value', enabled: true, span: 3 },
-  { id: 'metric-pl', title: 'Total Profit / Loss', enabled: true, span: 3 },
-  { id: 'metric-holdings', title: 'Active Holdings', enabled: true, span: 3 },
-  { id: 'metric-cash', title: 'Cash Available', enabled: true, span: 3 },
-  { id: 'performers', title: 'Top / Bottom Performers', enabled: true, span: 12 },
-  { id: 'performance-chart', title: 'Portfolio Performance Curve', enabled: true, span: 7 },
-  { id: 'allocation-chart', title: 'Asset Allocation', enabled: true, span: 5 },
-  { id: 'holdings-table', title: 'Holdings Portfolio', enabled: true, span: 12 },
+  { id: 'metric-portfolio', title: 'Total Portfolio Value',  enabled: true, span: 3 },
+  { id: 'metric-pl',        title: 'Total Profit / Loss',    enabled: true, span: 3 },
+  { id: 'metric-holdings',  title: 'Active Holdings',        enabled: true, span: 3 },
+  { id: 'metric-cash',      title: 'Cash Available',         enabled: true, span: 3 },
+  { id: 'performers',       title: 'Top / Bottom Performers',enabled: true, span: 12 },
+  { id: 'performance-chart',title: 'Portfolio Performance',  enabled: true, span: 7 },
+  { id: 'allocation-chart', title: 'Asset Allocation',       enabled: true, span: 5 },
+  { id: 'holdings-table',   title: 'Holdings Portfolio',     enabled: true, span: 12 },
 ];
 
 const loadLayout = () => {
@@ -36,61 +29,53 @@ const loadLayout = () => {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
     if (Array.isArray(saved) && saved.length) {
       return DEFAULT_LAYOUT.map((def) => {
-        const savedItem = saved.find((item) => item.id === def.id);
-        return savedItem ? { ...def, ...savedItem } : def;
+        const s = saved.find((i) => i.id === def.id);
+        return s ? { ...def, ...s } : def;
       });
     }
-  } catch (err) {
-    console.error('Failed to load dashboard layout', err);
-  }
+  } catch {}
   return DEFAULT_LAYOUT;
 };
 
 export const DashboardPage = ({ onOpenAddModal, onEditHolding, onDeleteHolding, onViewMarket }) => {
   const { summary, holdings, allocation, performance, loading } = usePortfolio();
-  const [layout, setLayout] = useState(loadLayout);
+  const [layout, setLayout]       = useState(loadLayout);
   const [customizing, setCustomizing] = useState(false);
   const [draggedId, setDraggedId] = useState(null);
-  const [overId, setOverId] = useState(null);
+  const [overId, setOverId]       = useState(null);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(layout));
   }, [layout]);
 
+  /* ── Loading skeleton ── */
   if (loading && !summary) {
     return (
       <div className="space-y-6 animate-pulse">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-32 rounded-2xl bg-slate-200/70 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800" />
+            <div key={i} className="h-32 rounded-2xl bg-dz-card border border-dz-border" />
           ))}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="h-80 rounded-2xl bg-slate-200/70 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800" />
-          <div className="h-80 rounded-2xl bg-slate-200/70 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800" />
+          <div className="h-80 rounded-2xl bg-dz-card border border-dz-border" />
+          <div className="h-80 rounded-2xl bg-dz-card border border-dz-border" />
         </div>
       </div>
     );
   }
 
-  const isOverallGain = summary?.totalProfitLoss >= 0;
+  const isOverallGain = (summary?.totalProfitLoss ?? 0) >= 0;
 
-  const updateWidget = (id, patch) => {
-    setLayout((prev) => prev.map((widget) => (widget.id === id ? { ...widget, ...patch } : widget)));
-  };
-
-  const toggleVisibility = (id) => {
-    setLayout((prev) =>
-      prev.map((widget) => (widget.id === id ? { ...widget, enabled: !widget.enabled } : widget))
-    );
-  };
-
+  const updateWidget    = (id, patch) =>
+    setLayout((prev) => prev.map((w) => (w.id === id ? { ...w, ...patch } : w)));
+  const toggleVisibility = (id) =>
+    setLayout((prev) => prev.map((w) => (w.id === id ? { ...w, enabled: !w.enabled } : w)));
   const changeSpan = (id, span) => updateWidget(id, { span });
-
-  const moveWidget = (id, direction) => {
+  const moveWidget = (id, dir) => {
     setLayout((prev) => {
       const from = prev.findIndex((w) => w.id === id);
-      const to = from + direction;
+      const to   = from + dir;
       if (from === -1 || to < 0 || to >= prev.length) return prev;
       const next = [...prev];
       const [moved] = next.splice(from, 1);
@@ -98,14 +83,12 @@ export const DashboardPage = ({ onOpenAddModal, onEditHolding, onDeleteHolding, 
       return next;
     });
   };
-
   const resetLayout = () => setLayout(DEFAULT_LAYOUT);
-
-  const handleDrop = (targetId) => {
+  const handleDrop  = (targetId) => {
     if (!draggedId || draggedId === targetId) return;
     setLayout((prev) => {
       const from = prev.findIndex((w) => w.id === draggedId);
-      const to = prev.findIndex((w) => w.id === targetId);
+      const to   = prev.findIndex((w) => w.id === targetId);
       if (from === -1 || to === -1) return prev;
       const next = [...prev];
       const [moved] = next.splice(from, 1);
@@ -116,15 +99,17 @@ export const DashboardPage = ({ onOpenAddModal, onEditHolding, onDeleteHolding, 
     setOverId(null);
   };
 
+  /* ── Metric definitions ── */
   const METRICS = {
     'metric-portfolio': {
       title: 'Total Portfolio Value',
       value: summary?.totalPortfolioValue || 0,
       change: summary?.todayPortfolioChangePercentage,
-      isPositive: summary?.todayPortfolioChange >= 0,
+      isPositive: (summary?.todayPortfolioChange ?? 0) >= 0,
       icon: DollarSign,
-      color: 'brand',
+      color: 'amber',
       subtitle: "Today's Change",
+      highlight: true,            // amber glow border on the key metric
     },
     'metric-pl': {
       title: 'Total Profit / Loss',
@@ -132,7 +117,7 @@ export const DashboardPage = ({ onOpenAddModal, onEditHolding, onDeleteHolding, 
       change: summary?.profitLossPercentage,
       isPositive: isOverallGain,
       icon: TrendingUp,
-      color: isOverallGain ? 'emerald' : 'rose',
+      color: isOverallGain ? 'green' : 'rose',
       subtitle: 'Unrealized Return',
     },
     'metric-holdings': {
@@ -151,60 +136,70 @@ export const DashboardPage = ({ onOpenAddModal, onEditHolding, onDeleteHolding, 
     },
   };
 
+  /* ── Performers panel ── */
   const renderPerformers = () =>
     summary?.bestPerformingAsset && summary?.worstPerformingAsset ? (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between">
+        {/* Top performer */}
+        <div className="p-4 rounded-2xl bg-dz-green/8 border border-dz-green/20 flex items-center justify-between"
+          style={{ background: 'rgba(118,147,86,0.08)' }}>
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400">
-              <Flame className="w-5 h-5" />
+            <div className="p-2.5 rounded-xl bg-dz-green/15 border border-dz-green/25">
+              <Flame className="w-4 h-4 text-dz-green2" />
             </div>
             <div>
-              <span className="text-xs text-emerald-400 font-semibold uppercase">Top Performing Asset</span>
-              <div className="font-bold text-slate-900 dark:text-slate-100 text-sm">
-                {summary.bestPerformingAsset.assetName} ({summary.bestPerformingAsset.tickerSymbol})
+              <span className="text-[10px] text-dz-green2 font-semibold uppercase tracking-wider">Top Performer</span>
+              <div className="font-bold text-white text-sm mt-0.5">
+                {summary.bestPerformingAsset.assetName}
+                <span className="text-dz-muted font-mono text-xs ml-1.5">
+                  ({summary.bestPerformingAsset.tickerSymbol})
+                </span>
               </div>
             </div>
           </div>
-          <div className="text-right">
-            <span className="text-sm font-bold text-emerald-400 font-mono">
+          <div className="text-right flex-shrink-0">
+            <div className="text-base font-bold text-dz-green2 font-mono">
               +{summary.bestPerformingAsset.profitPercentage}%
-            </span>
-            <div className="text-xs text-slate-400">Gain: ${summary.bestPerformingAsset.profitLoss}</div>
+            </div>
+            <div className="text-[11px] text-dz-muted">${summary.bestPerformingAsset.profitLoss}</div>
           </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-between">
+        {/* Bottom performer */}
+        <div className="p-4 rounded-2xl bg-rose-500/8 border border-rose-500/20 flex items-center justify-between"
+          style={{ background: 'rgba(239,68,68,0.06)' }}>
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-rose-500/20 text-rose-400">
-              <AlertCircle className="w-5 h-5" />
+            <div className="p-2.5 rounded-xl bg-rose-500/15 border border-rose-500/20">
+              <AlertCircle className="w-4 h-4 text-rose-400" />
             </div>
             <div>
-              <span className="text-xs text-rose-400 font-semibold uppercase">Lowest Performing Asset</span>
-              <div className="font-bold text-slate-900 dark:text-slate-100 text-sm">
-                {summary.worstPerformingAsset.assetName} ({summary.worstPerformingAsset.tickerSymbol})
+              <span className="text-[10px] text-rose-400 font-semibold uppercase tracking-wider">Lowest Performer</span>
+              <div className="font-bold text-white text-sm mt-0.5">
+                {summary.worstPerformingAsset.assetName}
+                <span className="text-dz-muted font-mono text-xs ml-1.5">
+                  ({summary.worstPerformingAsset.tickerSymbol})
+                </span>
               </div>
             </div>
           </div>
-          <div className="text-right">
-            <span className="text-sm font-bold text-rose-400 font-mono">
+          <div className="text-right flex-shrink-0">
+            <div className="text-base font-bold text-rose-400 font-mono">
               {summary.worstPerformingAsset.profitPercentage}%
-            </span>
-            <div className="text-xs text-slate-400">P/L: ${summary.worstPerformingAsset.profitLoss}</div>
+            </div>
+            <div className="text-[11px] text-dz-muted">${summary.worstPerformingAsset.profitLoss}</div>
           </div>
         </div>
       </div>
     ) : null;
 
+  /* ── Widget renderer ── */
   const renderWidget = (widget) => {
     switch (widget.id) {
       case 'metric-portfolio':
       case 'metric-pl':
       case 'metric-holdings':
-      case 'metric-cash': {
-        const metric = METRICS[widget.id];
-        return <MetricCard {...metric} />;
-      }
+      case 'metric-cash':
+        return <MetricCard {...METRICS[widget.id]} />;
       case 'performers':
         return renderPerformers();
       case 'performance-chart':
@@ -225,42 +220,41 @@ export const DashboardPage = ({ onOpenAddModal, onEditHolding, onDeleteHolding, 
     }
   };
 
-  const visibleWidgets = layout.filter((widget) => widget.enabled);
+  const visibleWidgets = layout.filter((w) => w.enabled);
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
+      {/* ── Page Header ──────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-brand-500/10 border border-brand-500/20 text-brand-400">
-              <LayoutDashboard className="w-4 h-4" />
+          <h1 className="text-xl font-bold text-white tracking-tight flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-dz-amber/10 border border-dz-amber/20">
+              <LayoutDashboard className="w-4 h-4 text-dz-amber" />
             </div>
             Dashboard Overview
           </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs text-dz-muted mt-1">
             {customizing
-              ? 'Drag widgets to reorder them — your layout is saved automatically'
-              : 'Personalize your dashboard: arrange, resize and hide widgets'}
+              ? 'Drag widgets to reorder — layout is saved automatically'
+              : 'Arrange, resize and hide widgets to personalise your view'}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <button
             onClick={resetLayout}
-            className="px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300 transition-all text-xs font-semibold flex items-center gap-2 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:text-white dark:hover:border-slate-700"
-            title="Reset dashboard layout to defaults"
+            className="btn-secondary text-xs"
+            title="Reset to defaults"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Reset</span>
           </button>
-
           <button
-            onClick={() => setCustomizing((prev) => !prev)}
-            className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all ${
+            onClick={() => setCustomizing((p) => !p)}
+            className={`px-3.5 py-2 rounded-full text-xs font-semibold flex items-center gap-2 transition-all ${
               customizing
-                ? 'bg-gradient-to-r from-brand-600 to-indigo-600 text-white shadow-lg shadow-brand-600/30'
-                : 'bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:text-white dark:hover:border-slate-700'
+                ? 'bg-dz-amber text-black shadow-amber-glow'
+                : 'btn-secondary'
             }`}
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
@@ -270,19 +264,15 @@ export const DashboardPage = ({ onOpenAddModal, onEditHolding, onDeleteHolding, 
         </div>
       </div>
 
+      {/* ── Empty state ── */}
       {visibleWidgets.length === 0 ? (
-        <div className="glass-card rounded-2xl border border-slate-200 dark:border-slate-800 p-12 text-center">
-          <div className="w-14 h-14 mx-auto rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-400 mb-4 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-500">
+        <div className="glass-card rounded-2xl p-12 text-center">
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-dz-dark border border-dz-border flex items-center justify-center text-dz-bench mb-4">
             <SlidersHorizontal className="w-6 h-6" />
           </div>
-          <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">All widgets are hidden</h3>
-          <p className="text-xs text-slate-500 mt-1.5 mb-5 dark:text-slate-400">
-            Open the dashboard customizer to bring widgets back to your view.
-          </p>
-          <button
-            onClick={() => setCustomizing(true)}
-            className="px-4 py-2 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 text-white font-semibold text-xs shadow-lg shadow-brand-600/30 transition-all"
-          >
+          <h3 className="text-base font-bold text-white">All widgets are hidden</h3>
+          <p className="text-xs text-dz-muted mt-1.5 mb-5">Open the customizer to bring widgets back.</p>
+          <button onClick={() => setCustomizing(true)} className="btn-primary text-xs">
             Customize Dashboard
           </button>
         </div>
@@ -299,12 +289,9 @@ export const DashboardPage = ({ onOpenAddModal, onEditHolding, onDeleteHolding, 
                 isOver={overId === widget.id && draggedId !== widget.id}
                 onDragStart={setDraggedId}
                 onDragOver={setOverId}
-                onDragLeave={() => setOverId((prev) => (prev === widget.id ? null : prev))}
+                onDragLeave={() => setOverId((p) => (p === widget.id ? null : p))}
                 onDrop={handleDrop}
-                onDragEnd={() => {
-                  setDraggedId(null);
-                  setOverId(null);
-                }}
+                onDragEnd={() => { setDraggedId(null); setOverId(null); }}
                 onHide={() => toggleVisibility(widget.id)}
               >
                 {renderWidget(widget)}

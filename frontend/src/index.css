@@ -3,99 +3,170 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    color-scheme: dark;
+  }
+
   body {
-    @apply font-sans bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 antialiased transition-colors duration-300;
+    @apply font-sans bg-dz-black text-white antialiased transition-colors duration-300;
   }
 
   ::selection {
-    @apply bg-brand-500 text-white;
+    background: rgba(226, 135, 97, 0.35);
+    color: #ffffff;
   }
 
   :focus-visible {
-    @apply outline-none ring-2 ring-brand-500/50 ring-offset-2 ring-offset-white dark:ring-offset-slate-950;
+    @apply outline-none ring-2 ring-dz-amber/50 ring-offset-2 ring-offset-dz-black;
   }
 }
 
-/* Custom Scrollbars */
+/* ─── Custom Scrollbars ────────────────────────────────────────── */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
-
 ::-webkit-scrollbar-track {
   background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.35);
+  background: rgba(63, 63, 70, 0.7);
   border-radius: 9999px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 116, 139, 0.6);
+  background: rgba(113, 113, 122, 0.8);
 }
 
-/* Glassmorphism Cards */
+/* ─── Dezerv Glass Card ───────────────────────────────────────── */
+/* Primary card — rich pitch-black with subtle top highlight */
 .glass-card {
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 8px 24px -12px rgba(15, 23, 42, 0.1);
+  background: #121215;
+  border: 1px solid #27272a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.7), 0 8px 32px -12px rgba(0, 0, 0, 0.9);
 }
 
-.dark .glass-card {
-  background: rgba(15, 23, 42, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: none;
+/* Hover lift variant */
+.glass-card-hover {
+  background: #121215;
+  border: 1px solid #27272a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.7), 0 8px 32px -12px rgba(0, 0, 0, 0.9);
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+.glass-card-hover:hover {
+  border-color: #3f3f46;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(63, 63, 70, 0.5);
+  transform: translateY(-1px);
 }
 
-/* Glow effects */
-.glow-emerald {
-  box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.25);
+/* ─── Amber Glow Highlight Card ──────────────────────────────── */
+/* Used for the featured/key metric callout box */
+.highlight-card {
+  background: #121215;
+  border: 1px solid #e28761;
+  box-shadow: 0 0 24px -4px rgba(226, 135, 97, 0.25), 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+.highlight-card-subtle {
+  background: #121215;
+  border: 1px solid rgba(226, 135, 97, 0.35);
+  box-shadow: 0 0 16px -6px rgba(226, 135, 97, 0.15);
 }
 
-.glow-rose {
-  box-shadow: 0 0 25px -5px rgba(239, 68, 68, 0.25);
+/* ─── Green Glow ─────────────────────────────────────────────── */
+.glow-green {
+  box-shadow: 0 0 24px -5px rgba(118, 147, 86, 0.35);
 }
 
-.glow-brand {
-  box-shadow: 0 0 25px -5px rgba(99, 102, 241, 0.3);
+/* ─── Dezerv Pill Buttons ─────────────────────────────────────── */
+/* Primary white pill */
+.btn-primary {
+  @apply inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-black font-semibold text-sm hover:bg-neutral-200 transition-colors;
+}
+/* Secondary dark pill */
+.btn-secondary {
+  @apply inline-flex items-center gap-2 px-4 py-2 rounded-full bg-neutral-900 border border-dz-border text-dz-subtle hover:text-white hover:border-dz-border2 transition-colors text-sm font-medium;
 }
 
-/* Animations */
+/* ─── Input / Form Base ──────────────────────────────────────── */
+.dz-input {
+  @apply w-full px-3 py-2 rounded-xl bg-dz-dark border border-dz-border text-white placeholder-dz-muted focus:border-dz-amber2/60 focus:outline-none transition-colors text-xs;
+}
+.dz-label {
+  @apply block text-dz-muted font-medium mb-1 text-xs;
+}
+.dz-select {
+  @apply w-full px-3 py-2 rounded-xl bg-dz-dark border border-dz-border text-white focus:border-dz-amber2/60 focus:outline-none transition-colors text-xs;
+}
+
+/* ─── Chart Tooltip (used by Recharts) ───────────────────────── */
+.dz-tooltip {
+  background: #17171c !important;
+  border: 1px solid #27272a !important;
+  border-radius: 12px !important;
+  color: #ffffff !important;
+  font-size: 12px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7) !important;
+}
+
+/* ─── Modal Animation ────────────────────────────────────────── */
 @keyframes modalIn {
-  from { opacity: 0; transform: translateY(10px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);    }
 }
-
 .modal-panel {
-  animation: modalIn 0.2s ease-out;
+  animation: modalIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes fadeIn {
   from { opacity: 0; }
-  to { opacity: 1; }
+  to   { opacity: 1; }
 }
-
 .overlay-fade {
   animation: fadeIn 0.15s ease-out;
 }
 
+/* ─── Toast Animation ────────────────────────────────────────── */
 @keyframes toastIn {
-  from { opacity: 0; transform: translateX(24px); }
-  to { opacity: 1; transform: translateX(0); }
+  from { opacity: 0; transform: translateX(28px); }
+  to   { opacity: 1; transform: translateX(0);    }
 }
-
 .toast-enter {
-  animation: toastIn 0.25s ease-out;
+  animation: toastIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* ─── Pulse Glow ─────────────────────────────────────────────── */
 @keyframes pulseGlow {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
+  50%       { opacity: 0.55; }
 }
-
 .animate-pulse-slow {
   animation: pulseGlow 3s infinite ease-in-out;
+}
+
+/* ─── Ticker Marquee (Navbar live strip) ─────────────────────── */
+@keyframes marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.marquee-track {
+  animation: marquee 28s linear infinite;
+}
+.marquee-track:hover {
+  animation-play-state: paused;
+}
+
+/* ─── Table row hover ────────────────────────────────────────── */
+.dz-row:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* ─── Separator line ─────────────────────────────────────────── */
+.dz-divider {
+  border-color: #27272a;
+}
+
+/* ─── Active nav pill glow ───────────────────────────────────── */
+.nav-active {
+  background: rgba(226, 135, 97, 0.1);
+  border: 1px solid rgba(226, 135, 97, 0.3);
+  color: #e28761;
 }

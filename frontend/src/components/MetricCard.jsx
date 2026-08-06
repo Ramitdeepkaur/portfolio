@@ -1,37 +1,82 @@
 import React from 'react';
 
-export const MetricCard = ({ title, value, change, isPositive, icon: Icon, color = 'brand', subtitle }) => {
+/**
+ * Dezerv-styled KPI card.
+ * Props:
+ *   title      — label string
+ *   value      — number (rendered as currency) or string (rendered as-is)
+ *   change     — optional ± percentage number
+ *   isPositive — boolean controls green/red badge
+ *   icon       — Lucide icon component
+ *   color      — 'brand' | 'emerald' | 'rose' | 'amber' | 'green'
+ *   subtitle   — secondary label under the badge
+ *   highlight  — boolean: render with amber glow border (key metric callout)
+ */
+export const MetricCard = ({
+  title,
+  value,
+  change,
+  isPositive,
+  icon: Icon,
+  color = 'brand',
+  subtitle,
+  highlight = false,
+}) => {
   const formatCurrency = (val) => {
     if (val === undefined || val === null) return '$0.00';
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
   };
 
-  const getAccent = () => {
+  /* Icon accent colour */
+  const iconColor = () => {
     switch (color) {
-      case 'emerald': return 'text-emerald-600 dark:text-emerald-400';
-      case 'rose': return 'text-rose-600 dark:text-rose-400';
-      case 'amber': return 'text-amber-600 dark:text-amber-400';
-      default: return 'text-brand-600 dark:text-brand-400';
+      case 'green':   return 'text-dz-green2';
+      case 'emerald': return 'text-emerald-400';
+      case 'rose':    return 'text-rose-400';
+      case 'amber':   return 'text-dz-amber';
+      default:        return 'text-dz-amber';
     }
   };
 
-  const getGlow = () => {
+  /* Icon background ring */
+  const iconBg = () => {
     switch (color) {
-      case 'emerald': return 'bg-gradient-to-bl from-emerald-400/25 via-emerald-400/5 to-transparent';
-      case 'rose': return 'bg-gradient-to-bl from-rose-400/25 via-rose-400/5 to-transparent';
-      case 'amber': return 'bg-gradient-to-bl from-amber-400/25 via-amber-400/5 to-transparent';
-      default: return 'bg-gradient-to-bl from-brand-400/25 via-brand-400/5 to-transparent';
+      case 'green':   return 'bg-dz-green/10 border-dz-green/20';
+      case 'emerald': return 'bg-emerald-500/10 border-emerald-500/20';
+      case 'rose':    return 'bg-rose-500/10 border-rose-500/20';
+      case 'amber':   return 'bg-dz-amber/10 border-dz-amber/20';
+      default:        return 'bg-dz-amber/10 border-dz-amber/20';
     }
   };
+
+  /* Corner glow */
+  const glowClass = () => {
+    switch (color) {
+      case 'green':   return 'from-dz-green/20 via-dz-green/5';
+      case 'emerald': return 'from-emerald-500/20 via-emerald-500/5';
+      case 'rose':    return 'from-rose-500/20 via-rose-500/5';
+      case 'amber':   return 'from-dz-amber/20 via-dz-amber/5';
+      default:        return 'from-dz-amber/20 via-dz-amber/5';
+    }
+  };
+
+  const cardClass = highlight
+    ? 'highlight-card-subtle relative overflow-hidden rounded-2xl p-5 transition-all duration-200 hover:-translate-y-0.5'
+    : 'glass-card relative overflow-hidden rounded-2xl p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-dz-border2';
 
   return (
-    <div className="glass-card relative overflow-hidden rounded-2xl p-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-400/40 dark:hover:border-brand-400/30">
-      <div className={`absolute top-0 right-0 w-32 h-32 ${getGlow()} rounded-full blur-2xl opacity-60 dark:opacity-50 pointer-events-none`} />
+    <div className={cardClass}>
+      {/* Corner gradient glow */}
+      <div
+        className={`absolute top-0 right-0 w-28 h-28 bg-gradient-to-bl ${glowClass()} to-transparent rounded-full blur-2xl opacity-70 pointer-events-none`}
+      />
 
-      <div className="flex items-start justify-between relative">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">{title}</p>
-          <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight mt-1 truncate">
+      <div className="relative flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-semibold text-dz-muted uppercase tracking-widest truncate">
+            {title}
+          </p>
+          <h3 className="text-2xl font-bold text-white tracking-tight mt-1 truncate">
             {typeof value === 'number' ? formatCurrency(value) : value}
           </h3>
 
@@ -39,23 +84,25 @@ export const MetricCard = ({ title, value, change, isPositive, icon: Icon, color
             <div className="flex items-center gap-2 mt-2 flex-wrap">
               {change !== undefined && (
                 <span
-                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
+                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
                     isPositive
-                      ? 'bg-emerald-50 text-emerald-600 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20'
-                      : 'bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20'
+                      ? 'bg-dz-green/10 text-dz-green2 border-dz-green/25'
+                      : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
                   }`}
                 >
                   {isPositive ? '+' : ''}{change}%
                 </span>
               )}
-              {subtitle && <span className="text-xs text-slate-400 dark:text-slate-500">{subtitle}</span>}
+              {subtitle && (
+                <span className="text-[10px] text-dz-muted">{subtitle}</span>
+              )}
             </div>
           )}
         </div>
 
         {Icon && (
-          <div className={`p-3 rounded-xl bg-white border border-slate-200 flex items-center justify-center flex-shrink-0 dark:bg-slate-900/90 dark:border-slate-800`}>
-            <Icon className={`w-5 h-5 ${getAccent()}`} />
+          <div className={`p-2.5 rounded-xl border flex items-center justify-center flex-shrink-0 ${iconBg()}`}>
+            <Icon className={`w-5 h-5 ${iconColor()}`} />
           </div>
         )}
       </div>

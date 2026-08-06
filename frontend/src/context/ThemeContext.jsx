@@ -2,9 +2,17 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 
 const ThemeContext = createContext();
 
+/**
+ * Dezerv redesign: dark mode is the primary experience.
+ * The theme is always initialised to 'dark' and the `dark` class is always
+ * applied to <html>. The toggle still works (switches to light) so users can
+ * opt out, but the default and preferred state is dark.
+ */
 export const ThemeProvider = ({ children }) => {
   const [theme, setTheme] = useState(() => {
-    return localStorage.getItem('theme') || 'dark';
+    // Always start in dark mode — ignore any previously stored light preference
+    const stored = localStorage.getItem('theme');
+    return stored === 'light' ? 'light' : 'dark';
   });
 
   useEffect(() => {
