@@ -6,7 +6,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import com.portfolio.manager.dto.MarketSearchResultDTO;
 import yahoofinance.Stock;
 import yahoofinance.YahooFinance;
 import yahoofinance.histquotes.HistoricalQuote;
@@ -55,7 +54,6 @@ public class YahooFinanceClient {
     private static final String USER_AGENT =
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
     private static final String CHART_URL = "https://query2.finance.yahoo.com/v8/finance/chart/%s?interval=1d&range=%s";
-    private static final int SEARCH_QUOTES_COUNT = 25;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final HttpClient httpClient = HttpClient.newBuilder()
@@ -782,103 +780,5 @@ public class YahooFinanceClient {
             }
         }
         return null;
-    }
-
-    public List<MarketSearchResultDTO> searchAssets(String query) {
-        if (query == null || query.trim().isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        String cleanedQuery = query.trim();
-        String encodedQuery = URLEncoder.encode(cleanedQuery, StandardCharsets.UTF_8);
-        String searchUrl = "https://query1.finance.yahoo.com/v1/finance/search?q=" + encodedQuery
-                + "&quotesCount=" + SEARCH_QUOTES_COUNT + "&newsCount=0";
-
-        // Curl is the reliable path when Yahoo blocks the Java HTTP/TLS handshake.
-        Optional<String> curlBody = fetchViaCurl(searchUrl);
-        if (curlBody.isPresent()) {
-            return parseSearchResults(curlBody.get());
-        }
-
-        try {
-            throttle();
-            HttpRequest request = HttpRequest.newBuilder(URI.create(searchUrl))
-                    .timeout(Duration.ofSeconds(6))
-                    .header("User-Agent", USER_AGENT)
-                    .header("Accept", "application/json")
-                    .GET()
-                    .build();
-
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() >= 200 && response.statusCode() < 300) {
-                return parseSearchResults(response.body());
-            }
-
-            String altSearchUrl = "https://query2.finance.yahoo.com/v1/finance/search?q=" + encodedQuery
-                    + "&quotesCount=" + SEARCH_QUOTES_COUNT + "&newsCount=0";
-            HttpRequest altRequest = HttpRequest.newBuilder(URI.create(altSearchUrl))
-                    .timeout(Duration.ofSeconds(6))
-                    .header("User-Agent", USER_AGENT)
-                    .header("Accept", "application/json")
-                    .GET()
-                    .build();
-            HttpResponse<String> altResponse = httpClient.send(altRequest, HttpResponse.BodyHandlers.ofString());
-            if (altResponse.statusCode() >= 200 && altResponse.statusCode() < 300) {
-                return parseSearchResults(altResponse.body());
-            }
-        } catch (Exception ex) {
-            log.warn("Yahoo search failed for query '{}': {}", cleanedQuery, ex.getMessage());
-        }
-        return Collections.emptyList();
-    }
-
-    private List<MarketSearchResultDTO> parseSearchResults(String jsonBody) {
-        List<MarketSearchResultDTO> list = new ArrayList<>();
-        try {
-            JsonNode root = objectMapper.readTree(jsonBody);
-            JsonNode quotes = root.path("quotes");
-            if (quotes.isArray()) {
-                for (JsonNode node : quotes) {
-                    String symbol = node.path("symbol").asText(null);
-                    if (symbol == null || symbol.isEmpty()) {
-                        continue;
-                    }
-                    String shortName = node.path("shortname").asText(null);
-                    String longName = node.path("longname").asText(null);
-                    String name = (shortName != null && !shortName.isBlank()) ? shortName :
-                                  ((longName != null && !longName.isBlank()) ? longName : symbol);
-
-                    String exch = node.path("exchDisp").asText(null);
-                    if (exch == null || exch.isBlank()) {
-                        exch = node.path("exchange").asText(null);
-                    }
-
-                    String rawType = node.path("quoteType").asText(null);
-                    String assetType = mapQuoteTypeToAssetType(rawType);
-
-                    String sector = node.path("sectorDisp").asText(null);
-                    if (sector == null || sector.isBlank()) {
-                        sector = node.path("sector").asText(null);
-                    }
-
-                    list.add(new MarketSearchResultDTO(symbol.toUpperCase(), name, exch, assetType, sector));
-                }
-            }
-        } catch (Exception e) {
-            log.warn("Error parsing Yahoo Finance search JSON: {}", e.getMessage());
-        }
-        return list;
-    }
-
-    private String mapQuoteTypeToAssetType(String quoteType) {
-        if (quoteType == null) return "STOCKS";
-        switch (quoteType.toUpperCase()) {
-            case "EQUITY": return "STOCKS";
-            case "ETF": return "ETFS";
-            case "MUTUALFUND": return "MUTUAL_FUNDS";
-            case "CURRENCY":
-            case "CRYPTOCURRENCY": return "CASH";
-            default: return "STOCKS";
-        }
     }
 }

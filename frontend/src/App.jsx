@@ -14,18 +14,20 @@ import AnalyticsPage from './pages/AnalyticsPage';
 import MarketWatchPage from './pages/MarketWatchPage';
 
 import AddHoldingModal from './components/AddHoldingModal';
-import SellHoldingModal from './components/SellHoldingModal';
+import EditHoldingModal from './components/EditHoldingModal';
 import CsvModal from './components/CsvModal';
 import StockDetailModal from './components/StockDetailModal';
+import ChatWidget from './components/ChatWidget';
+import api from './api/client';
 
 const AppContent = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const { toast, showToast, refreshData } = usePortfolio();
+  const { toast, showToast, refreshData, deleteHolding } = usePortfolio();
 
   // Modals state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isCsvModalOpen, setIsCsvModalOpen] = useState(false);
-  const [sellingHolding, setSellingHolding] = useState(null);
+  const [editingHolding, setEditingHolding] = useState(null);
   const [viewingMarketTicker, setViewingMarketTicker] = useState(null);
 
   const handleHoldingCreated = (msg) => {
@@ -33,15 +35,21 @@ const AppContent = () => {
     refreshData();
   };
 
-  const formatMoney = (val) =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val || 0);
+  const handleHoldingUpdated = (msg) => {
+    showToast(msg || 'Holding updated successfully!');
+    refreshData();
+  };
 
-  const handleHoldingSold = async (response) => {
-    showToast(
-      `Sold ${response.quantitySold} shares of ${response.tickerSymbol} for ${formatMoney(response.proceeds)} — cash updated.`,
-      'success'
-    );
-    await refreshData();
+  const handleDeleteHolding = async (id) => {
+    if (window.confirm('Are you sure you want to delete this investment holding?')) {
+      try {
+        await api.deleteHolding(id);
+        showToast('Holding removed from portfolio', 'success');
+        refreshData();
+      } catch (err) {
+        showToast('Failed to delete holding', 'error');
+      }
+    }
   };
 
   return (
@@ -58,7 +66,8 @@ const AppContent = () => {
           {activeTab === 'dashboard' && (
             <DashboardPage
               onOpenAddModal={() => setIsAddModalOpen(true)}
-              onSellHolding={(h) => setSellingHolding(h)}
+              onEditHolding={(h) => setEditingHolding(h)}
+              onDeleteHolding={handleDeleteHolding}
               onViewMarket={(t) => setViewingMarketTicker(t)}
             />
           )}
@@ -67,7 +76,8 @@ const AppContent = () => {
             <HoldingsPage
               onOpenAddModal={() => setIsAddModalOpen(true)}
               onOpenCsvModal={() => setIsCsvModalOpen(true)}
-              onSellHolding={(h) => setSellingHolding(h)}
+              onEditHolding={(h) => setEditingHolding(h)}
+              onDeleteHolding={handleDeleteHolding}
               onViewMarket={(t) => setViewingMarketTicker(t)}
             />
           )}
@@ -93,11 +103,11 @@ const AppContent = () => {
         onSuccess={handleHoldingCreated}
       />
 
-      <SellHoldingModal
-        holding={sellingHolding}
-        isOpen={Boolean(sellingHolding)}
-        onClose={() => setSellingHolding(null)}
-        onSuccess={handleHoldingSold}
+      <EditHoldingModal
+        holding={editingHolding}
+        isOpen={Boolean(editingHolding)}
+        onClose={() => setEditingHolding(null)}
+        onSuccess={handleHoldingUpdated}
       />
 
       <CsvModal
@@ -114,6 +124,8 @@ const AppContent = () => {
         isOpen={Boolean(viewingMarketTicker)}
         onClose={() => setViewingMarketTicker(null)}
       />
+
+      <ChatWidget />
 
       <Toast toast={toast} />
     </div>
