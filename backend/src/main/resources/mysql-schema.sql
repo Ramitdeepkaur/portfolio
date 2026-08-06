@@ -53,3 +53,17 @@ CREATE TABLE IF NOT EXISTS transactions (
     date DATE NOT NULL,
     notes VARCHAR(500)
 );
+
+-- TABLE 5: Audit logs (portfolio change history)
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    action VARCHAR(30) NOT NULL,
+    entity_type VARCHAR(40) NOT NULL,
+    entity VARCHAR(150) NOT NULL,
+    summary VARCHAR(500) NOT NULL,
+    user_name VARCHAR(100) NOT NULL,
+    ip_address VARCHAR(64),
+    before_snapshot TEXT,
+    after_snapshot TEXT,
+    created_at DATETIME NOT NULL
+);

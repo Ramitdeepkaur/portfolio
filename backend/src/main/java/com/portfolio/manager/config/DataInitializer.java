@@ -1,7 +1,9 @@
 package com.portfolio.manager.config;
 
+import com.portfolio.manager.entity.AuditLog;
 import com.portfolio.manager.entity.Holding;
 import com.portfolio.manager.entity.Transaction;
+import com.portfolio.manager.repository.AuditLogRepository;
 import com.portfolio.manager.repository.HoldingRepository;
 import com.portfolio.manager.repository.TransactionRepository;
 import org.springframework.boot.CommandLineRunner;
@@ -9,6 +11,7 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Component
@@ -16,10 +19,15 @@ public class DataInitializer implements CommandLineRunner {
 
     private final HoldingRepository holdingRepository;
     private final TransactionRepository transactionRepository;
+    private final AuditLogRepository auditLogRepository;
 
-    public DataInitializer(HoldingRepository holdingRepository, TransactionRepository transactionRepository) {
+    public DataInitializer(
+            HoldingRepository holdingRepository,
+            TransactionRepository transactionRepository,
+            AuditLogRepository auditLogRepository) {
         this.holdingRepository = holdingRepository;
         this.transactionRepository = transactionRepository;
+        this.auditLogRepository = auditLogRepository;
     }
 
     @Override
@@ -47,5 +55,33 @@ public class DataInitializer implements CommandLineRunner {
                     new Transaction(null, "NVDA", "SELL", 2.0, new BigDecimal("125.60"), new BigDecimal("251.20"), LocalDate.now().minusDays(10), "Trimmed NVDA"));
             transactionRepository.saveAll(seedTransactions);
         }
+
+        if (auditLogRepository.count() == 0) {
+            AuditLog aapl = seedAudit("CREATE", "HOLDING", "AAPL", "Seeded holding AAPL", "—", "AAPL (Apple Inc.) qty=15.0 price=150.00 type=STOCKS", LocalDateTime.now().minusDays(30));
+            AuditLog msft = seedAudit("CREATE", "HOLDING", "MSFT", "Seeded holding MSFT", "—", "MSFT (Microsoft Corp.) qty=10.0 price=380.00 type=STOCKS", LocalDateTime.now().minusDays(20));
+            AuditLog nvda = seedAudit("UPDATE", "TRANSACTION", "NVDA", "SELL 2.0 NVDA", "NVDA qty=27.0", "SELL NVDA qty=2.0 @ 125.60 amount=251.20", LocalDateTime.now().minusDays(10));
+            auditLogRepository.saveAll(List.of(aapl, msft, nvda));
+        }
+    }
+
+    private AuditLog seedAudit(
+            String action,
+            String entityType,
+            String entity,
+            String summary,
+            String before,
+            String after,
+            LocalDateTime date) {
+        AuditLog log = new AuditLog();
+        log.setAction(action);
+        log.setEntityType(entityType);
+        log.setEntity(entity);
+        log.setSummary(summary);
+        log.setBefore(before);
+        log.setAfter(after);
+        log.setUser("portfolio-user");
+        log.setIpAddress("local");
+        log.setDate(date);
+        return log;
     }
 }

@@ -25,11 +25,17 @@ public class HoldingService {
     private final HoldingRepository holdingRepository;
     private final MarketDataService marketDataService;
     private final TransactionService transactionService;
+    private final AuditLogService auditLogService;
 
-    public HoldingService(HoldingRepository holdingRepository, MarketDataService marketDataService, TransactionService transactionService) {
+    public HoldingService(
+            HoldingRepository holdingRepository,
+            MarketDataService marketDataService,
+            TransactionService transactionService,
+            AuditLogService auditLogService) {
         this.holdingRepository = holdingRepository;
         this.marketDataService = marketDataService;
         this.transactionService = transactionService;
+        this.auditLogService = auditLogService;
     }
 
     public List<HoldingResponseDTO> getAllHoldings() {
@@ -150,6 +156,14 @@ public class HoldingService {
             transactionService.createTransaction(transaction);
         }
 
+        auditLogService.record(
+                "CREATE",
+                "HOLDING",
+                saved.getTickerSymbol(),
+                "Added holding " + saved.getTickerSymbol() + " (" + saved.getQuantity() + " shares)",
+                "—",
+                describeHolding(saved));
+
         return convertToDTO(saved);
     }
 
@@ -159,6 +173,7 @@ public class HoldingService {
                 .orElseThrow(() -> new RuntimeException("Holding not found with id: " + id));
         Double originalQuantity = holding.getQuantity();
         BigDecimal originalPrice = holding.getPurchasePrice();
+        String before = describeHolding(holding);
 
         holding.setAssetName(details.getAssetName());
         holding.setTickerSymbol(details.getTickerSymbol());
@@ -185,15 +200,56 @@ public class HoldingService {
             transactionService.createTransaction(transaction);
         }
 
+        auditLogService.record(
+                "UPDATE",
+                "HOLDING",
+                updated.getTickerSymbol(),
+                "Updated holding " + updated.getTickerSymbol(),
+                before,
+                describeHolding(updated));
+
         return convertToDTO(updated);
     }
 
     @Transactional
     public void deleteHolding(Long id) {
-        if (!holdingRepository.existsById(id)) {
-            throw new RuntimeException("Holding not found with id: " + id);
+        Holding holding = holdingRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Holding not found with id: " + id));
+
+        String before = describeHolding(holding);
+
+        if (holding.getQuantity() != null && holding.getQuantity() > 0 && holding.getPurchasePrice() != null) {
+            Transaction transaction = new Transaction();
+            transaction.setHolding(holding.getTickerSymbol());
+            transaction.setType("SELL");
+            transaction.setQuantity(holding.getQuantity());
+            transaction.setPrice(holding.getPurchasePrice());
+            transaction.setAmount(holding.getPurchasePrice().multiply(BigDecimal.valueOf(holding.getQuantity())));
+            transaction.setDate(LocalDate.now());
+            transaction.setNotes("Position closed on holding delete");
+            transactionService.createTransaction(transaction);
         }
+
         holdingRepository.deleteById(id);
+
+        auditLogService.record(
+                "DELETE",
+                "HOLDING",
+                holding.getTickerSymbol(),
+                "Deleted holding " + holding.getTickerSymbol(),
+                before,
+                "—");
+    }
+
+    private String describeHolding(Holding holding) {
+        return String.format(
+                Locale.US,
+                "%s (%s) qty=%s price=%s type=%s",
+                holding.getTickerSymbol(),
+                holding.getAssetName(),
+                holding.getQuantity(),
+                holding.getPurchasePrice(),
+                holding.getAssetType());
     }
 
     private Comparator<HoldingResponseDTO> buildComparator(String sortBy, String order) {
