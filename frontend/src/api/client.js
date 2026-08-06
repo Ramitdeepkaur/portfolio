@@ -35,7 +35,8 @@ export const api = {
       .then((res) => res.data),
 
   // Market Data (live Yahoo Finance via Spring backend)
-  searchMarket: (query) => client.get('/market/search', { params: { query } }).then((res) => res.data),
+  searchMarket: (query, signal) =>
+    client.get('/market/search', { params: { query }, signal }).then((res) => res.data),
   getMarketData: (ticker) => client.get(`/market/${ticker}`).then((res) => res.data),
   getMarketHistory: (ticker, range = '1m') =>
     client.get(`/market/${ticker}/history?range=${range}`).then((res) => res.data),

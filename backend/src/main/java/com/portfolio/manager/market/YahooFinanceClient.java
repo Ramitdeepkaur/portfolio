@@ -55,6 +55,7 @@ public class YahooFinanceClient {
     private static final String USER_AGENT =
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
     private static final String CHART_URL = "https://query2.finance.yahoo.com/v8/finance/chart/%s?interval=1d&range=%s";
+    private static final int SEARCH_QUOTES_COUNT = 25;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final HttpClient httpClient = HttpClient.newBuilder()
@@ -789,11 +790,18 @@ public class YahooFinanceClient {
         }
 
         String cleanedQuery = query.trim();
+        String encodedQuery = URLEncoder.encode(cleanedQuery, StandardCharsets.UTF_8);
+        String searchUrl = "https://query1.finance.yahoo.com/v1/finance/search?q=" + encodedQuery
+                + "&quotesCount=" + SEARCH_QUOTES_COUNT + "&newsCount=0";
+
+        // Curl is the reliable path when Yahoo blocks the Java HTTP/TLS handshake.
+        Optional<String> curlBody = fetchViaCurl(searchUrl);
+        if (curlBody.isPresent()) {
+            return parseSearchResults(curlBody.get());
+        }
+
         try {
             throttle();
-            String encodedQuery = URLEncoder.encode(cleanedQuery, StandardCharsets.UTF_8);
-            String searchUrl = "https://query1.finance.yahoo.com/v1/finance/search?q=" + encodedQuery + "&quotesCount=10&newsCount=0";
-
             HttpRequest request = HttpRequest.newBuilder(URI.create(searchUrl))
                     .timeout(Duration.ofSeconds(6))
                     .header("User-Agent", USER_AGENT)
@@ -806,7 +814,8 @@ public class YahooFinanceClient {
                 return parseSearchResults(response.body());
             }
 
-            String altSearchUrl = "https://query2.finance.yahoo.com/v1/finance/search?q=" + encodedQuery + "&quotesCount=10&newsCount=0";
+            String altSearchUrl = "https://query2.finance.yahoo.com/v1/finance/search?q=" + encodedQuery
+                    + "&quotesCount=" + SEARCH_QUOTES_COUNT + "&newsCount=0";
             HttpRequest altRequest = HttpRequest.newBuilder(URI.create(altSearchUrl))
                     .timeout(Duration.ofSeconds(6))
                     .header("User-Agent", USER_AGENT)
