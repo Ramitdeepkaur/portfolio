@@ -23,7 +23,7 @@ export const api = {
   createHolding: (data) => client.post('/holdings', data).then((res) => res.data),
   updateHolding: (id, data) => client.put(`/holdings/${id}`, data).then((res) => res.data),
   deleteHolding: (id) => client.delete(`/holdings/${id}`).then((res) => res.data),
-  sellHolding: (id, quantity) => client.post(`/holdings/${id}/sell`, { quantity }).then((res) => res.data),
+  sellHolding: (id, quantity, notes) => client.post(`/holdings/${id}/sell`, { quantity, notes }).then((res) => res.data),
 
   // CSV Export/Import
   exportHoldingsCsv: () => client.get('/holdings/export/csv', { responseType: 'blob' }).then((res) => res.data),

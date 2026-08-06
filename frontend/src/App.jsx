@@ -36,12 +36,12 @@ const AppContent = () => {
   const formatMoney = (val) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val || 0);
 
-  const handleHoldingSold = (response) => {
+  const handleHoldingSold = async (response) => {
     showToast(
       `Sold ${response.quantitySold} shares of ${response.tickerSymbol} for ${formatMoney(response.proceeds)} — cash updated.`,
       'success'
     );
-    refreshData();
+    await refreshData();
   };
 
   return (

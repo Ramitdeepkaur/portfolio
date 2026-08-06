@@ -104,7 +104,7 @@ public class HoldingController {
     @PostMapping("/{id}/sell")
     @Operation(summary = "Sell a quantity of a holding and credit the proceeds to cash")
     public ResponseEntity<SellHoldingResponseDTO> sellHolding(@PathVariable Long id, @Valid @RequestBody SellHoldingRequestDTO request) {
-        return ResponseEntity.ok(holdingService.sellHolding(id, request.getQuantity()));
+        return ResponseEntity.ok(holdingService.sellHolding(id, request.getQuantity(), request.getNotes()));
     }
 
     @GetMapping("/export/csv")
