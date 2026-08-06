@@ -8,7 +8,6 @@ export const PortfolioProvider = ({ children }) => {
   const [holdings, setHoldings] = useState([]);
   const [allocation, setAllocation] = useState(null);
   const [performance, setPerformance] = useState(null);
-  const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
 
@@ -28,18 +27,16 @@ export const PortfolioProvider = ({ children }) => {
         }
       }
 
-      const [sumData, holdData, allocData, perfData, txData] = await Promise.all([
+      const [sumData, holdData, allocData, perfData] = await Promise.all([
         api.getPortfolioSummary(),
         api.getHoldings(),
         api.getPortfolioAllocation(),
         api.getPortfolioPerformance(),
-        api.getTransactions(),
       ]);
       setSummary(sumData);
       setHoldings(holdData);
       setAllocation(allocData);
       setPerformance(perfData);
-      setTransactions(txData);
     } catch (err) {
       console.error('Failed to fetch portfolio data', err);
       showToast('Error connecting to backend API', 'error');
@@ -55,15 +52,6 @@ export const PortfolioProvider = ({ children }) => {
 
   const refreshData = useCallback(() => fetchAllData({ refreshQuotes: true }), [fetchAllData]);
 
-  const loadTransactions = useCallback(async () => {
-    try {
-      const txData = await api.getTransactions();
-      setTransactions(txData);
-    } catch (err) {
-      console.error('Failed to fetch transactions', err);
-    }
-  }, []);
-
   return (
     <PortfolioContext.Provider
       value={{
@@ -71,12 +59,10 @@ export const PortfolioProvider = ({ children }) => {
         holdings,
         allocation,
         performance,
-        transactions,
         loading,
         toast,
         showToast,
         refreshData,
-        loadTransactions,
       }}
     >
       {children}

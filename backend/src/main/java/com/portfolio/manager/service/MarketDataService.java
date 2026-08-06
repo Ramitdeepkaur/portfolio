@@ -2,7 +2,6 @@ package com.portfolio.manager.service;
 
 import com.portfolio.manager.dto.HistoricalPricePointDTO;
 import com.portfolio.manager.dto.MarketDataDTO;
-import com.portfolio.manager.dto.MarketSearchResultDTO;
 import com.portfolio.manager.entity.MarketData;
 import com.portfolio.manager.market.MarketDataException;
 import com.portfolio.manager.market.YahooFinanceClient;
@@ -285,12 +284,5 @@ public class MarketDataService {
 
     private BigDecimal nullSafe(BigDecimal value) {
         return value != null ? value : BigDecimal.ZERO;
-    }
-
-    public List<MarketSearchResultDTO> searchAssets(String query) {
-        if (query == null || query.trim().isEmpty()) {
-            return new ArrayList<>();
-        }
-        return yahooFinanceClient.searchAssets(query.trim());
     }
 }
