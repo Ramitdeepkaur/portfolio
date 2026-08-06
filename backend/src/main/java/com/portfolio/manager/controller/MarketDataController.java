@@ -1,6 +1,7 @@
 package com.portfolio.manager.controller;
 
 import com.portfolio.manager.dto.MarketDataDTO;
+import com.portfolio.manager.dto.MarketSearchResultDTO;
 import com.portfolio.manager.market.MarketDataException;
 import com.portfolio.manager.service.MarketDataService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -34,6 +35,15 @@ public class MarketDataController {
     public ResponseEntity<List<MarketDataDTO>> getWatchlist(
             @RequestParam(required = false) String symbols) {
         return ResponseEntity.ok(marketDataService.getWatchlist(symbols));
+    }
+
+    @GetMapping("/search")
+    @Operation(summary = "Search matching assets dynamically from Yahoo Finance")
+    public ResponseEntity<List<MarketSearchResultDTO>> searchAssets(
+            @RequestParam(required = false, defaultValue = "") String query,
+            @RequestParam(required = false) String q) {
+        String searchTerm = (query != null && !query.isBlank()) ? query : (q != null ? q : "");
+        return ResponseEntity.ok(marketDataService.searchAssets(searchTerm));
     }
 
     @GetMapping("/{ticker}")

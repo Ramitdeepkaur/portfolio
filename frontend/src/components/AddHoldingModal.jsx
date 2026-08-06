@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, AlertCircle, Loader2 } from 'lucide-react';
 import api from '../api/client';
+import { AssetSearchInput } from './AssetSearchInput';
 
 export const AddHoldingModal = ({ isOpen, onClose, onSuccess }) => {
   const [formData, setFormData] = useState({
@@ -20,6 +21,7 @@ export const AddHoldingModal = ({ isOpen, onClose, onSuccess }) => {
   const [marketPrice, setMarketPrice] = useState(null);
   const [error, setError] = useState(null);
 
+  // Handle ESC key and scroll locking
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -34,23 +36,56 @@ export const AddHoldingModal = ({ isOpen, onClose, onSuccess }) => {
 
   if (!isOpen) return null;
 
-  const handleTickerBlur = async () => {
-    if (formData.tickerSymbol.trim().length >= 1) {
-      try {
-        const data = await api.getMarketData(formData.tickerSymbol.trim().toUpperCase());
-        if (data && data.currentPrice) {
-          const price = Number(data.currentPrice);
-          setLookupPrice(price);
-          setMarketPrice(price);
+  const fetchLiveQuote = async (symbol) => {
+    if (!symbol || symbol.trim().length < 1) return;
+    try {
+      const data = await api.getMarketData(symbol.trim().toUpperCase());
+      if (data && data.currentPrice) {
+        const price = Number(data.currentPrice);
+        setLookupPrice(price);
+        setMarketPrice(price);
 
+        const quantity = Number(formData.quantity || 0);
+        if (quantity > 0) {
+          setFormData(prev => ({
+            ...prev,
+            purchasePrice: (quantity * price).toFixed(2).toString(),
+          }));
+        } else {
+          setFormData(prev => ({ ...prev, purchasePrice: price.toString() }));
           if (!formData.purchasePrice) {
             setFormData(prev => ({ ...prev, purchasePrice: price.toString() }));
           }
         }
-      } catch (e) {
-        setLookupPrice(null);
-        setMarketPrice(null);
       }
+    } catch (e) {
+      setLookupPrice(null);
+      setMarketPrice(null);
+    }
+  };
+
+  const handleTickerBlur = () => {
+    fetchLiveQuote(formData.tickerSymbol);
+  };
+
+  const handleSelectSearchResult = (item) => {
+    const newTicker = (item.tickerSymbol || formData.tickerSymbol).toUpperCase();
+    const newName = item.assetName || item.tickerSymbol || formData.assetName;
+    const newExch = item.exchange || formData.exchange;
+    const newSector = item.sector || formData.sector;
+    const newType = item.assetType || formData.assetType;
+
+    setFormData((prev) => ({
+      ...prev,
+      assetName: newName,
+      tickerSymbol: newTicker,
+      exchange: newExch,
+      sector: newSector,
+      assetType: newType,
+    }));
+
+    if (newTicker) {
+      fetchLiveQuote(newTicker);
     }
   };
 
@@ -120,32 +155,40 @@ export const AddHoldingModal = ({ isOpen, onClose, onSuccess }) => {
 
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelClass}>Ticker Symbol *</label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. AAPL, NVDA, VOO"
-                value={formData.tickerSymbol}
-                onChange={(e) => setFormData({ ...formData, tickerSymbol: e.target.value })}
-                onBlur={handleTickerBlur}
-                className={`${inputClass} uppercase font-mono`}
-              />
-              {lookupPrice && (
-                <span className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 block">Live Price: ${lookupPrice}</span>
-              )}
-            </div>
-
+            {/* Asset Name Field with Autocomplete */}
             <div>
               <label className={labelClass}>Asset Name *</label>
-              <input
-                type="text"
+              <AssetSearchInput
                 required
-                placeholder="e.g. Apple Inc."
                 value={formData.assetName}
-                onChange={(e) => setFormData({ ...formData, assetName: e.target.value })}
+                onChange={(nextValue) => setFormData((prev) => ({ ...prev, assetName: nextValue }))}
+                onSelect={handleSelectSearchResult}
+                placeholder="Type asset name or ticker (e.g. Apple or AAPL)"
                 className={inputClass}
+                ariaLabel="Asset name"
               />
+            </div>
+
+            {/* Ticker Symbol Field with Autocomplete */}
+            <div>
+              <label className={labelClass}>Ticker Symbol *</label>
+              <AssetSearchInput
+                required
+                value={formData.tickerSymbol}
+                onChange={(nextValue) =>
+                  setFormData((prev) => ({ ...prev, tickerSymbol: nextValue }))
+                }
+                onSelect={handleSelectSearchResult}
+                onBlur={handleTickerBlur}
+                placeholder="e.g. AAPL, NVDA, VOO"
+                className={`${inputClass} uppercase font-mono`}
+                ariaLabel="Ticker symbol"
+              />
+              {lookupPrice && (
+                <span className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 block">
+                  Live Price: ${lookupPrice}
+                </span>
+              )}
             </div>
           </div>
 
