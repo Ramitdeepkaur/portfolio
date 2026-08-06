@@ -33,8 +33,8 @@ export const MetricCard = ({
       case 'green':   return 'text-dz-green2';
       case 'emerald': return 'text-emerald-400';
       case 'rose':    return 'text-rose-400';
-      case 'amber':   return 'text-dz-amber';
-      default:        return 'text-dz-amber';
+      case 'cyan':    return 'text-dz-cyan';
+      default:        return 'text-dz-cyan';
     }
   };
 
@@ -44,8 +44,8 @@ export const MetricCard = ({
       case 'green':   return 'bg-dz-green/10 border-dz-green/20';
       case 'emerald': return 'bg-emerald-500/10 border-emerald-500/20';
       case 'rose':    return 'bg-rose-500/10 border-rose-500/20';
-      case 'amber':   return 'bg-dz-amber/10 border-dz-amber/20';
-      default:        return 'bg-dz-amber/10 border-dz-amber/20';
+      case 'cyan':    return 'bg-dz-cyan/10 border-dz-cyan/20';
+      default:        return 'bg-dz-cyan/10 border-dz-cyan/20';
     }
   };
 
@@ -55,13 +55,13 @@ export const MetricCard = ({
       case 'green':   return 'from-dz-green/20 via-dz-green/5';
       case 'emerald': return 'from-emerald-500/20 via-emerald-500/5';
       case 'rose':    return 'from-rose-500/20 via-rose-500/5';
-      case 'amber':   return 'from-dz-amber/20 via-dz-amber/5';
-      default:        return 'from-dz-amber/20 via-dz-amber/5';
+      case 'cyan':    return 'from-dz-cyan/20 via-dz-cyan/5';
+      default:        return 'from-dz-cyan/20 via-dz-cyan/5';
     }
   };
 
   const cardClass = highlight
-    ? 'highlight-card-subtle relative overflow-hidden rounded-2xl p-5 transition-all duration-200 hover:-translate-y-0.5'
+    ? 'highlight-card relative overflow-hidden rounded-2xl p-5 transition-all duration-200 hover:-translate-y-0.5'
     : 'glass-card relative overflow-hidden rounded-2xl p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-dz-border2';
 
   return (

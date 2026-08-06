@@ -107,9 +107,9 @@ export const DashboardPage = ({ onOpenAddModal, onEditHolding, onDeleteHolding, 
       change: summary?.todayPortfolioChangePercentage,
       isPositive: (summary?.todayPortfolioChange ?? 0) >= 0,
       icon: DollarSign,
-      color: 'amber',
+      color: 'cyan',
       subtitle: "Today's Change",
-      highlight: true,            // amber glow border on the key metric
+      highlight: true,
     },
     'metric-pl': {
       title: 'Total Profit / Loss',
@@ -124,7 +124,7 @@ export const DashboardPage = ({ onOpenAddModal, onEditHolding, onDeleteHolding, 
       title: 'Active Holdings',
       value: summary?.totalHoldings || 0,
       icon: Briefcase,
-      color: 'amber',
+      color: 'cyan',
       subtitle: 'Assets Tracked',
     },
     'metric-cash': {
@@ -136,115 +136,133 @@ export const DashboardPage = ({ onOpenAddModal, onEditHolding, onDeleteHolding, 
     },
   };
 
-  /* ── Performers panel ── */
-  const renderPerformers = () =>
-    summary?.bestPerformingAsset && summary?.worstPerformingAsset ? (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Top performer */}
-        <div className="p-4 rounded-2xl bg-dz-green/8 border border-dz-green/20 flex items-center justify-between"
-          style={{ background: 'rgba(118,147,86,0.08)' }}>
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-dz-green/15 border border-dz-green/25">
-              <Flame className="w-4 h-4 text-dz-green2" />
-            </div>
-            <div>
-              <span className="text-[10px] text-dz-green2 font-semibold uppercase tracking-wider">Top Performer</span>
-              <div className="font-bold text-white text-sm mt-0.5">
-                {summary.bestPerformingAsset.assetName}
-                <span className="text-dz-muted font-mono text-xs ml-1.5">
-                  ({summary.bestPerformingAsset.tickerSymbol})
-                </span>
-              </div>
-            </div>
-          </div>
-          <div className="text-right flex-shrink-0">
-            <div className="text-base font-bold text-dz-green2 font-mono">
-              +{summary.bestPerformingAsset.profitPercentage}%
-            </div>
-            <div className="text-[11px] text-dz-muted">${summary.bestPerformingAsset.profitLoss}</div>
-          </div>
+  const [feeType, setFeeType] = useState('fixed');
+
+  return (
+    <div className="space-y-8">
+
+      {/* ── Dezerv Main Hero Section (Image 1) ─────────────────────── */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 py-4">
+        <div>
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight leading-tight">
+            Dezerv is one of the <span className="text-white font-black underline decoration-dz-cyan underline-offset-8">top PMS</span> in India
+          </h1>
+          <p className="text-sm text-dz-muted mt-2">
+            Institutional portfolio management built for high net-worth investors.
+          </p>
         </div>
 
-        {/* Bottom performer */}
-        <div className="p-4 rounded-2xl bg-rose-500/8 border border-rose-500/20 flex items-center justify-between"
-          style={{ background: 'rgba(239,68,68,0.06)' }}>
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-rose-500/15 border border-rose-500/20">
-              <AlertCircle className="w-4 h-4 text-rose-400" />
-            </div>
-            <div>
-              <span className="text-[10px] text-rose-400 font-semibold uppercase tracking-wider">Lowest Performer</span>
-              <div className="font-bold text-white text-sm mt-0.5">
-                {summary.worstPerformingAsset.assetName}
-                <span className="text-dz-muted font-mono text-xs ml-1.5">
-                  ({summary.worstPerformingAsset.tickerSymbol})
-                </span>
-              </div>
-            </div>
+        <button
+          onClick={onOpenAddModal}
+          className="btn-primary flex-shrink-0 self-start md:self-auto text-sm font-semibold px-6 py-3"
+        >
+          <span className="text-black">🗓</span>
+          <span>Book a free call</span>
+        </button>
+      </div>
+
+      {/* ── Fee Model Comparative Section (Image 2) ────────────────── */}
+      <div className="glass-card rounded-3xl p-6 sm:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center border border-[#27272a]">
+        {/* Left Column */}
+        <div className="lg:col-span-6 space-y-6">
+          <div className="w-12 h-12 rounded-full border border-dz-cyan/40 bg-dz-cyan/10 flex items-center justify-center text-dz-cyan text-xl font-bold">
+            ₹
           </div>
-          <div className="text-right flex-shrink-0">
-            <div className="text-base font-bold text-rose-400 font-mono">
-              {summary.worstPerformingAsset.profitPercentage}%
+
+          {/* Toggle pill button matching Image 2 */}
+          <div className="inline-flex p-1 bg-[#18181c] border border-[#27272a] rounded-full">
+            <button
+              onClick={() => setFeeType('fixed')}
+              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                feeType === 'fixed'
+                  ? 'bg-[#27272a] text-white shadow-sm'
+                  : 'text-dz-muted hover:text-white'
+              }`}
+            >
+              Fixed Fee
+            </button>
+            <button
+              onClick={() => setFeeType('hybrid')}
+              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                feeType === 'hybrid'
+                  ? 'bg-[#27272a] text-white shadow-sm'
+                  : 'text-dz-muted hover:text-white'
+              }`}
+            >
+              Hybrid Fee
+            </button>
+          </div>
+
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+            Dezerv's {feeType === 'fixed' ? 'Fixed Fee' : 'Hybrid Fee'} Model
+          </h2>
+
+          <button
+            onClick={onOpenAddModal}
+            className="btn-primary text-xs sm:text-sm font-semibold px-5 py-2.5"
+          >
+            <span>🗓</span>
+            <span>Schedule a call</span>
+          </button>
+        </div>
+
+        {/* Right Column: Comparative Fee Breakdown matching Image 2 */}
+        <div className="lg:col-span-6 bg-[#09090b] rounded-2xl p-6 border border-[#27272a] space-y-6">
+          <div>
+            <span className="text-xs font-extrabold tracking-widest text-white uppercase block mb-2">
+              DEZERV
+            </span>
+            <div className="flex items-baseline gap-2">
+              <span className="text-5xl font-extrabold text-dz-cyan tracking-tight font-sans">
+                {feeType === 'fixed' ? '1%' : '0.5%'}
+              </span>
+              <span className="text-lg font-medium text-white">of your portfolio</span>
             </div>
-            <div className="text-[11px] text-dz-muted">${summary.worstPerformingAsset.profitLoss}</div>
+            <p className="text-xs text-dz-muted mt-2">
+              {feeType === 'fixed'
+                ? 'i.e., 0.25% of AUM is charged at the end of every quarter.'
+                : 'i.e., minimal performance fee charged only on returns above high-water mark.'}
+            </p>
+          </div>
+
+          {/* VS Divider */}
+          <div className="relative flex items-center justify-center my-4">
+            <div className="w-full border-t border-[#27272a]"></div>
+            <span className="absolute px-3 py-0.5 rounded-full bg-[#18181c] border border-[#27272a] text-[10px] font-bold text-dz-muted uppercase tracking-wider">
+              vs
+            </span>
+          </div>
+
+          <div>
+            <h4 className="text-sm font-bold text-white mb-1">Traditional wealth firms</h4>
+            <p className="text-xs text-dz-muted">
+              Some PMS charge more than 2% of AUM as Fixed Fees
+            </p>
+            <div className="mt-4 text-right">
+              <span className="text-xs text-dz-muted hover:text-white underline cursor-pointer">
+                See how it works
+              </span>
+            </div>
           </div>
         </div>
       </div>
-    ) : null;
 
-  /* ── Widget renderer ── */
-  const renderWidget = (widget) => {
-    switch (widget.id) {
-      case 'metric-portfolio':
-      case 'metric-pl':
-      case 'metric-holdings':
-      case 'metric-cash':
-        return <MetricCard {...METRICS[widget.id]} />;
-      case 'performers':
-        return renderPerformers();
-      case 'performance-chart':
-        return <PerformanceAreaChart performance={performance} />;
-      case 'allocation-chart':
-        return <AllocationPieChart allocation={allocation} />;
-      case 'holdings-table':
-        return (
-          <HoldingsTable
-            holdings={holdings}
-            onEdit={onEditHolding}
-            onDelete={onDeleteHolding}
-            onViewMarket={onViewMarket}
-          />
-        );
-      default:
-        return null;
-    }
-  };
-
-  const visibleWidgets = layout.filter((w) => w.enabled);
-
-  return (
-    <div className="space-y-6">
-      {/* ── Page Header ──────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* ── Page Header Controls ──────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 border-t border-[#1a1a1e]">
         <div>
-          <h1 className="text-xl font-bold text-white tracking-tight flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-dz-amber/10 border border-dz-amber/20">
-              <LayoutDashboard className="w-4 h-4 text-dz-amber" />
+          <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-dz-cyan/10 border border-dz-cyan/20">
+              <LayoutDashboard className="w-4 h-4 text-dz-cyan" />
             </div>
-            Dashboard Overview
-          </h1>
-          <p className="text-xs text-dz-muted mt-1">
-            {customizing
-              ? 'Drag widgets to reorder — layout is saved automatically'
-              : 'Arrange, resize and hide widgets to personalise your view'}
-          </p>
+            Portfolio Overview
+          </h2>
         </div>
 
         <div className="flex items-center gap-2">
           <button
             onClick={resetLayout}
             className="btn-secondary text-xs"
-            title="Reset to defaults"
+            title="Reset layout"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Reset</span>
@@ -253,13 +271,12 @@ export const DashboardPage = ({ onOpenAddModal, onEditHolding, onDeleteHolding, 
             onClick={() => setCustomizing((p) => !p)}
             className={`px-3.5 py-2 rounded-full text-xs font-semibold flex items-center gap-2 transition-all ${
               customizing
-                ? 'bg-dz-amber text-black shadow-amber-glow'
+                ? 'bg-white text-black shadow-md'
                 : 'btn-secondary'
             }`}
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">{customizing ? 'Done' : 'Customize'}</span>
-            <span className="sm:hidden">Customize</span>
+            <span>{customizing ? 'Done' : 'Customize'}</span>
           </button>
         </div>
       </div>

@@ -190,9 +190,10 @@ export const HoldingsTable = ({ holdings, onEdit, onDelete, onViewMarket }) => {
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse table-fixed">
           <thead>
-            <tr className="border-b border-dz-border bg-dz-dark/60 text-[10px] font-semibold text-dz-muted uppercase tracking-wider">
-              <th className={`${thClass} w-[24%]`}>Asset</th>
-              <th className={`${thClass} w-[11%]`}>Type</th>
+            <tr className="border-b border-dz-border bg-[#18181c] text-[11px] font-bold text-dz-muted uppercase tracking-wider">
+              <th className={`${thClass} w-[6%]`}>S.No</th>
+              <th className={`${thClass} w-[24%]`}>Name</th>
+              <th className={`${thClass} w-[10%]`}>Type</th>
               <th
                 className={`${thClass} w-[7%] cursor-pointer hover:text-white`}
                 onClick={() => handleSort('quantity')}
@@ -200,7 +201,7 @@ export const HoldingsTable = ({ holdings, onEdit, onDelete, onViewMarket }) => {
                 <div className="flex items-center gap-1">Qty <SortIcon field="quantity" /></div>
               </th>
               <th
-                className={`${thClass} w-[9%] cursor-pointer hover:text-white`}
+                className={`${thClass} w-[10%] cursor-pointer hover:text-white`}
                 onClick={() => handleSort('purchasePrice')}
               >
                 <div className="flex items-center gap-1">Avg Buy <SortIcon field="purchasePrice" /></div>
@@ -212,25 +213,25 @@ export const HoldingsTable = ({ holdings, onEdit, onDelete, onViewMarket }) => {
                 <div className="flex items-center gap-1">Cur. Price <SortIcon field="currentPrice" /></div>
               </th>
               <th
-                className={`${thClass} w-[11%] cursor-pointer hover:text-white`}
+                className={`${thClass} w-[12%] cursor-pointer hover:text-white`}
                 onClick={() => handleSort('currentValue')}
               >
-                <div className="flex items-center gap-1">Value <SortIcon field="currentValue" /></div>
+                <div className="flex items-center gap-1">AUM / Value <SortIcon field="currentValue" /></div>
               </th>
               <th
-                className={`${thClass} w-[17%] cursor-pointer hover:text-white`}
+                className={`${thClass} w-[12%] cursor-pointer hover:text-white`}
                 onClick={() => handleSort('profitLoss')}
               >
                 <div className="flex items-center gap-1">Unrealized P/L <SortIcon field="profitLoss" /></div>
               </th>
-              <th className={`${thClass} w-[10%] text-right`}>Actions</th>
+              <th className={`${thClass} w-[8%] text-right`}>Actions</th>
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-dz-border/60 text-xs">
+          <tbody className="divide-y divide-[#27272a]/60 text-xs">
             {visibleHoldings.length === 0 ? (
               <tr>
-                <td colSpan={8} className="py-14 px-4">
+                <td colSpan={9} className="py-14 px-4">
                   <div className="flex flex-col items-center justify-center text-center gap-3">
                     <div className="w-14 h-14 rounded-2xl bg-dz-card border border-dz-border flex items-center justify-center">
                       <Briefcase className="w-6 h-6 text-dz-bench" />
@@ -249,19 +250,24 @@ export const HoldingsTable = ({ holdings, onEdit, onDelete, onViewMarket }) => {
                 </td>
               </tr>
             ) : (
-              visibleHoldings.map((holding) => {
+              visibleHoldings.map((holding, idx) => {
                 const isGain = holding.profitLoss >= 0;
                 const plPct  = holding.profitPercentage;
                 return (
                   <tr key={holding.id} className="dz-row transition-colors">
-                    {/* Asset */}
-                    <td className="py-3.5 px-3 overflow-hidden">
+                    {/* S.No */}
+                    <td className="py-4 px-3 font-bold text-white text-sm">
+                      {idx + 1}
+                    </td>
+
+                    {/* Name */}
+                    <td className="py-4 px-3 overflow-hidden">
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-8 h-8 rounded-lg bg-dz-dark border border-dz-border flex items-center justify-center font-bold text-[11px] font-mono flex-shrink-0">
-                          <span className="text-dz-amber">{holding.tickerSymbol.substring(0, 3)}</span>
+                        <div className="w-8 h-8 rounded-lg bg-black border border-[#27272a] flex items-center justify-center font-bold text-[11px] font-mono flex-shrink-0">
+                          <span className="text-dz-cyan">{holding.tickerSymbol.substring(0, 3)}</span>
                         </div>
                         <div className="min-w-0">
-                          <div className="font-semibold text-white truncate">{holding.assetName}</div>
+                          <div className="font-bold text-white truncate text-sm">{holding.assetName}</div>
                           <div className="text-[11px] text-dz-muted font-mono flex items-center gap-1.5">
                             <span>{holding.tickerSymbol}</span>
                             <span className="text-dz-border2">·</span>
