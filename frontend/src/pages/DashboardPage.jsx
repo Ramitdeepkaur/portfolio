@@ -137,7 +137,7 @@ export const DashboardPage = ({ onOpenAddModal, onEditHolding, onDeleteHolding, 
     },
     'metric-holdings': {
       title: 'Active Holdings',
-      value: summary?.totalHoldings || 0,
+      value: String(Math.abs(summary?.totalHoldings || 0)),
       icon: Briefcase,
       color: 'amber',
       subtitle: 'Assets Tracked',
