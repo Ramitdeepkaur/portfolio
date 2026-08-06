@@ -69,17 +69,21 @@ export const api = {
   deleteTransaction: (id) => client.delete(`/transactions/${id}`).then((res) => res.data),
   getTransactionStats: () => client.get('/transactions/stats').then((res) => res.data),
 
-  getAuditLogs: async () => {
+  getAuditLogs: async (params = {}) => {
     try {
-      return await client.get('/audit-logs').then((res) => res.data);
+      return await client.get('/audit-logs', { params }).then((res) => res.data);
     } catch {
-      // No fake audit seed — return empty when endpoint is unavailable
       return [];
     }
   },
   getHoldingAuditLogs: async (holdingId) => {
-    const logs = await api.getAuditLogs();
-    return logs.filter((log) => log.entity === holdingId);
+    try {
+      return await client
+        .get(`/audit-logs/entity/${encodeURIComponent(holdingId)}`)
+        .then((res) => res.data);
+    } catch {
+      return [];
+    }
   },
   exportTransactionsCsv: async () => {
     const transactions = await api.getTransactions();
