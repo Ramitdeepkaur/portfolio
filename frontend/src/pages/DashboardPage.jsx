@@ -43,6 +43,7 @@ export const DashboardPage = ({ onOpenAddModal, onEditHolding, onDeleteHolding, 
   const [customizing, setCustomizing] = useState(false);
   const [draggedId, setDraggedId] = useState(null);
   const [overId, setOverId]       = useState(null);
+  const [feeType, setFeeType]     = useState('fixed');
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(layout));
@@ -136,19 +137,17 @@ export const DashboardPage = ({ onOpenAddModal, onEditHolding, onDeleteHolding, 
     },
   };
 
-  const [feeType, setFeeType] = useState('fixed');
-
   return (
     <div className="space-y-8">
 
-      {/* ── Dezerv Main Hero Section (Image 1) ─────────────────────── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 py-4">
+      {/* ── FolioTrack Main Hero Section ─────────────────────────────── */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 py-2">
         <div>
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight leading-tight">
-            Dezerv is one of the <span className="text-white font-black underline decoration-dz-cyan underline-offset-8">top PMS</span> in India
+            FolioTrack is one of the <span className="text-white font-black underline decoration-dz-cyan underline-offset-8">top PMS</span> in India
           </h1>
           <p className="text-sm text-dz-muted mt-2">
-            Institutional portfolio management built for high net-worth investors.
+            Institutional portfolio management & wealth tracking built for smart investors.
           </p>
         </div>
 
@@ -161,7 +160,7 @@ export const DashboardPage = ({ onOpenAddModal, onEditHolding, onDeleteHolding, 
         </button>
       </div>
 
-      {/* ── Fee Model Comparative Section (Image 2) ────────────────── */}
+      {/* ── Fee Model Comparative Section ───────────────────────────── */}
       <div className="glass-card rounded-3xl p-6 sm:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center border border-[#27272a]">
         {/* Left Column */}
         <div className="lg:col-span-6 space-y-6">
@@ -169,7 +168,7 @@ export const DashboardPage = ({ onOpenAddModal, onEditHolding, onDeleteHolding, 
             ₹
           </div>
 
-          {/* Toggle pill button matching Image 2 */}
+          {/* Toggle pill button */}
           <div className="inline-flex p-1 bg-[#18181c] border border-[#27272a] rounded-full">
             <button
               onClick={() => setFeeType('fixed')}
@@ -194,7 +193,7 @@ export const DashboardPage = ({ onOpenAddModal, onEditHolding, onDeleteHolding, 
           </div>
 
           <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
-            Dezerv's {feeType === 'fixed' ? 'Fixed Fee' : 'Hybrid Fee'} Model
+            FolioTrack's {feeType === 'fixed' ? 'Fixed Fee' : 'Hybrid Fee'} Model
           </h2>
 
           <button
@@ -206,11 +205,11 @@ export const DashboardPage = ({ onOpenAddModal, onEditHolding, onDeleteHolding, 
           </button>
         </div>
 
-        {/* Right Column: Comparative Fee Breakdown matching Image 2 */}
+        {/* Right Column: Comparative Fee Breakdown */}
         <div className="lg:col-span-6 bg-[#09090b] rounded-2xl p-6 border border-[#27272a] space-y-6">
           <div>
-            <span className="text-xs font-extrabold tracking-widest text-white uppercase block mb-2">
-              DEZERV
+            <span className="text-xs font-extrabold tracking-widest text-white uppercase block mb-2 font-sans">
+              FOLIOTRACK
             </span>
             <div className="flex items-baseline gap-2">
               <span className="text-5xl font-extrabold text-dz-cyan tracking-tight font-sans">
