@@ -17,6 +17,7 @@ import AddHoldingModal from './components/AddHoldingModal';
 import EditHoldingModal from './components/EditHoldingModal';
 import CsvModal from './components/CsvModal';
 import StockDetailModal from './components/StockDetailModal';
+import ChatWidget from './components/ChatWidget';
 import api from './api/client';
 
 const AppContent = () => {
@@ -123,6 +124,8 @@ const AppContent = () => {
         isOpen={Boolean(viewingMarketTicker)}
         onClose={() => setViewingMarketTicker(null)}
       />
+
+      <ChatWidget />
 
       <Toast toast={toast} />
     </div>

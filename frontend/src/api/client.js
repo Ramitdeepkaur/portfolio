@@ -96,6 +96,9 @@ export const api = {
       .join('\n');
     return new Blob([header + body], { type: 'text/csv' });
   },
+
+  // AI Advisor Chat
+  sendChatMessage: (messages) => client.post('/chat', { messages }).then((res) => res.data),
 };
 
 export default api;
