@@ -7,26 +7,47 @@ export const SellHoldingModal = ({ holding, isOpen, onClose, onSuccess }) => {
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [livePrice, setLivePrice] = useState(null);
+  const [priceLoading, setPriceLoading] = useState(false);
 
   useEffect(() => {
     if (holding) {
       setQuantity(holding.quantity != null ? holding.quantity.toString() : '');
       setNotes('');
       setError(null);
+      setLivePrice(holding.currentPrice != null ? Number(holding.currentPrice) : null);
     }
   }, [holding]);
 
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-      const onKey = (e) => e.key === 'Escape' && onClose();
-      window.addEventListener('keydown', onKey);
-      return () => {
-        document.body.style.overflow = '';
-        window.removeEventListener('keydown', onKey);
-      };
-    }
-  }, [isOpen, onClose]);
+    if (!isOpen || !holding?.tickerSymbol) return undefined;
+
+    document.body.style.overflow = 'hidden';
+    const onKey = (e) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+
+    let cancelled = false;
+    const refreshPrice = async () => {
+      setPriceLoading(true);
+      try {
+        const data = await api.getMarketData(holding.tickerSymbol);
+        if (!cancelled && data?.currentPrice != null) {
+          setLivePrice(Number(data.currentPrice));
+        }
+      } catch {
+        // Keep existing price if Yahoo refresh fails
+      } finally {
+        if (!cancelled) setPriceLoading(false);
+      }
+    };
+    refreshPrice();
+
+    return () => {
+      cancelled = true;
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [isOpen, holding, onClose]);
 
   if (!isOpen || !holding) return null;
 
@@ -35,7 +56,12 @@ export const SellHoldingModal = ({ holding, isOpen, onClose, onSuccess }) => {
 
   const qtyNum = Number(quantity);
   const heldQty = holding.quantity || 0;
-  const currentPrice = holding.currentPrice != null ? Number(holding.currentPrice) : null;
+  const currentPrice =
+    livePrice != null
+      ? livePrice
+      : holding.currentPrice != null
+        ? Number(holding.currentPrice)
+        : null;
   const estimatedProceeds =
     Number.isFinite(qtyNum) && qtyNum > 0 && currentPrice != null ? qtyNum * currentPrice : null;
   const willClose = Number.isFinite(qtyNum) && qtyNum > 0 && qtyNum >= heldQty;
@@ -129,8 +155,11 @@ export const SellHoldingModal = ({ holding, isOpen, onClose, onSuccess }) => {
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-slate-500 dark:text-slate-400 font-medium">Current market price</span>
-              <span className="font-mono font-semibold text-slate-900 dark:text-slate-100">
+              <span className="text-slate-500 dark:text-slate-400 font-medium">
+                Live Yahoo price{priceLoading ? ' (refreshing…)' : ''}
+              </span>
+              <span className="font-mono font-semibold text-slate-900 dark:text-slate-100 inline-flex items-center gap-1.5">
+                {priceLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-brand-500" />}
                 {currentPrice != null ? formatMoney(currentPrice) : '—'}
               </span>
             </div>

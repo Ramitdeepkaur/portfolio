@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Search, X, ArrowUpDown, ArrowUp, ArrowDown, Edit2, Trash2, TrendingUp, TrendingDown, Eye, Briefcase } from 'lucide-react';
+import { Search, X, ArrowUpDown, ArrowUp, ArrowDown, TrendingUp, TrendingDown, Eye, Briefcase, BadgeDollarSign } from 'lucide-react';
 import api from '../api/client';
 
-export const HoldingsTable = ({ holdings, onEdit, onDelete, onViewMarket }) => {
+export const HoldingsTable = ({ holdings, onSell, onViewMarket }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('ALL');
   const [selectedSector, setSelectedSector] = useState('ALL');
@@ -309,20 +309,16 @@ export const HoldingsTable = ({ holdings, onEdit, onDelete, onViewMarket }) => {
                         >
                           <Eye className="w-3.5 h-3.5" />
                         </button>
-                        <button
-                          onClick={() => onEdit(holding)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-slate-100 transition-colors dark:hover:text-amber-400 dark:hover:bg-slate-900"
-                          title="Edit Holding"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => onDelete(holding.id)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-slate-100 transition-colors dark:hover:text-rose-400 dark:hover:bg-slate-900"
-                          title="Delete Holding"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {holding.assetType?.toUpperCase() !== 'CASH' && (
+                          <button
+                            onClick={() => onSell?.(holding)}
+                            className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-semibold shadow-sm shadow-emerald-600/30 transition-colors"
+                            title="Sell holding at live Yahoo price"
+                          >
+                            <BadgeDollarSign className="w-3.5 h-3.5" />
+                            Sell
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
