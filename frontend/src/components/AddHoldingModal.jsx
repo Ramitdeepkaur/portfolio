@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, AlertCircle, Loader2 } from 'lucide-react';
 import api from '../api/client';
+import { AssetSearchInput } from './AssetSearchInput';
 
 export const AddHoldingModal = ({ isOpen, onClose, onSuccess }) => {
   const [formData, setFormData] = useState({
@@ -17,8 +18,10 @@ export const AddHoldingModal = ({ isOpen, onClose, onSuccess }) => {
 
   const [loading, setLoading] = useState(false);
   const [lookupPrice, setLookupPrice] = useState(null);
+  const [marketPrice, setMarketPrice] = useState(null);
   const [error, setError] = useState(null);
 
+  // Handle ESC key and scroll locking
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -33,20 +36,66 @@ export const AddHoldingModal = ({ isOpen, onClose, onSuccess }) => {
 
   if (!isOpen) return null;
 
-  const handleTickerBlur = async () => {
-    if (formData.tickerSymbol.trim().length >= 1) {
-      try {
-        const data = await api.getMarketData(formData.tickerSymbol.trim().toUpperCase());
-        if (data && data.currentPrice) {
-          setLookupPrice(data.currentPrice);
-          if (!formData.purchasePrice) {
-            setFormData(prev => ({ ...prev, purchasePrice: data.currentPrice.toString() }));
-          }
+  const fetchLiveQuote = async (symbol) => {
+    if (!symbol || symbol.trim().length < 1) return;
+    try {
+      const data = await api.getMarketData(symbol.trim().toUpperCase());
+      if (data && data.currentPrice) {
+        const price = Number(data.currentPrice);
+        setLookupPrice(price);
+        setMarketPrice(price);
+
+        const quantity = Number(formData.quantity || 0);
+        if (quantity > 0) {
+          setFormData(prev => ({
+            ...prev,
+            purchasePrice: (quantity * price).toFixed(2).toString(),
+          }));
+        } else {
+          setFormData(prev => ({ ...prev, purchasePrice: price.toString() }));
         }
-      } catch (e) {
-        setLookupPrice(null);
       }
+    } catch (e) {
+      setLookupPrice(null);
+      setMarketPrice(null);
     }
+  };
+
+  const handleTickerBlur = () => {
+    fetchLiveQuote(formData.tickerSymbol);
+  };
+
+  const handleSelectSearchResult = (item) => {
+    const newTicker = (item.tickerSymbol || item.symbol || formData.tickerSymbol).toUpperCase();
+    const newName =
+      item.assetName || item.shortName || item.longName || item.tickerSymbol || item.symbol || formData.assetName;
+    const newExch = item.exchange || formData.exchange;
+    const newSector = item.sector || formData.sector;
+    const newType = item.assetType || formData.assetType;
+
+    setFormData((prev) => ({
+      ...prev,
+      assetName: newName,
+      tickerSymbol: newTicker,
+      exchange: newExch,
+      sector: newSector,
+      assetType: newType,
+    }));
+
+    if (newTicker) {
+      fetchLiveQuote(newTicker);
+    }
+  };
+
+  const handleQuantityChange = (value) => {
+    const quantity = Number(value || 0);
+    setFormData(prev => {
+      const next = { ...prev, quantity: value };
+      if (marketPrice && quantity > 0) {
+        next.purchasePrice = (quantity * marketPrice).toFixed(2).toString();
+      }
+      return next;
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -95,42 +144,56 @@ export const AddHoldingModal = ({ isOpen, onClose, onSuccess }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md overlay-fade" role="dialog" aria-modal="true" aria-label="Add new investment">
-      <div className="glass-card w-full max-w-lg rounded-2xl p-6 shadow-2xl space-y-5 modal-panel max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between border-b border-slate-200 pb-4 dark:border-slate-800">
+      <div className="glass-card w-full max-w-lg rounded-2xl p-6 shadow-2xl space-y-5 modal-panel max-h-[90vh] flex flex-col overflow-visible">
+        <div className="flex items-center justify-between border-b border-slate-200 pb-4 dark:border-slate-800 flex-shrink-0">
           <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">Add New Investment</h3>
           <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100 dark:hover:text-white dark:hover:bg-slate-900" aria-label="Close">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelClass}>Ticker Symbol *</label>
-              <input
-                type="text"
+        <form onSubmit={handleSubmit} className="space-y-4 text-xs overflow-y-auto overflow-x-visible flex-1 min-h-0">
+          {/* Search row kept near top; dropdown uses high z-index */}
+          <div className="grid grid-cols-2 gap-3 relative z-[60]">
+            {/* Asset Name Field with Autocomplete */}
+            <div className="relative overflow-visible">
+              <label className={labelClass}>Asset Name *</label>
+              <AssetSearchInput
                 required
-                placeholder="e.g. AAPL, NVDA, VOO"
-                value={formData.tickerSymbol}
-                onChange={(e) => setFormData({ ...formData, tickerSymbol: e.target.value })}
-                onBlur={handleTickerBlur}
-                className={`${inputClass} uppercase font-mono`}
+                value={formData.assetName}
+                onChange={(nextValue) => setFormData((prev) => ({ ...prev, assetName: nextValue }))}
+                onSelect={handleSelectSearchResult}
+                placeholder="Type asset name or ticker (e.g. Apple or AAPL)"
+                className={inputClass}
+                ariaLabel="Asset name"
               />
-              {lookupPrice && (
-                <span className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 block">Live Price: ${lookupPrice}</span>
-              )}
             </div>
 
-            <div>
-              <label className={labelClass}>Asset Name *</label>
-              <input
-                type="text"
+            {/* Ticker Symbol Field with Autocomplete */}
+            <div className="relative overflow-visible">
+              <label className={labelClass}>Ticker Symbol *</label>
+              <AssetSearchInput
                 required
-                placeholder="e.g. Apple Inc."
-                value={formData.assetName}
-                onChange={(e) => setFormData({ ...formData, assetName: e.target.value })}
-                className={inputClass}
+                value={formData.tickerSymbol}
+                onChange={(nextValue) =>
+                  setFormData((prev) => ({ ...prev, tickerSymbol: nextValue }))
+                }
+                onSelect={handleSelectSearchResult}
+                onBlur={() => {
+                  // Only fetch quote after blur if a ticker was typed/selected
+                  if (formData.tickerSymbol?.trim()) {
+                    handleTickerBlur();
+                  }
+                }}
+                placeholder="e.g. AAPL, NVDA, VOO"
+                className={`${inputClass} uppercase font-mono`}
+                ariaLabel="Ticker symbol"
               />
+              {lookupPrice && (
+                <span className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 block">
+                  Live Price: ${lookupPrice}
+                </span>
+              )}
             </div>
           </div>
 
@@ -172,7 +235,7 @@ export const AddHoldingModal = ({ isOpen, onClose, onSuccess }) => {
                 required
                 placeholder="0.00"
                 value={formData.quantity}
-                onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                onChange={(e) => handleQuantityChange(e.target.value)}
                 className={`${inputClass} font-mono`}
               />
             </div>

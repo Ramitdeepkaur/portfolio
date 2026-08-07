@@ -67,3 +67,11 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     after_snapshot TEXT,
     created_at DATETIME NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS watchlist_items (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    ticker_symbol VARCHAR(50) NOT NULL,
+    notes VARCHAR(255),
+    created_at DATETIME NOT NULL,
+    UNIQUE KEY uk_watchlist_ticker (ticker_symbol)
+);

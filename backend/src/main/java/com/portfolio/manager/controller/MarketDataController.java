@@ -2,6 +2,7 @@ package com.portfolio.manager.controller;
 
 import com.portfolio.manager.dto.MarketDataDTO;
 import com.portfolio.manager.dto.MarketSearchResultDTO;
+import com.portfolio.manager.dto.TickerSuggestionDTO;
 import com.portfolio.manager.market.MarketDataException;
 import com.portfolio.manager.service.MarketDataService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -44,6 +45,14 @@ public class MarketDataController {
             @RequestParam(required = false) String q) {
         String searchTerm = (query != null && !query.isBlank()) ? query : (q != null ? q : "");
         return ResponseEntity.ok(marketDataService.searchAssets(searchTerm));
+    }
+
+    @GetMapping("/search/tickers")
+    @Operation(summary = "Suggest valid Yahoo ticker symbols for autocomplete")
+    public ResponseEntity<List<TickerSuggestionDTO>> searchTickers(
+            @RequestParam String q,
+            @RequestParam(defaultValue = "8") int limit) {
+        return ResponseEntity.ok(marketDataService.searchTickers(q, limit));
     }
 
     @GetMapping("/{ticker}")

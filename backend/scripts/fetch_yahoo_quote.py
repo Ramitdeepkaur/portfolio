@@ -5,6 +5,7 @@ Usage:
   python3 fetch_yahoo_quote.py AAPL
   python3 fetch_yahoo_quote.py AAPL MSFT NVDA
   python3 fetch_yahoo_quote.py --history AAPL 1mo
+  python3 fetch_yahoo_quote.py --search apple 8
 """
 
 from __future__ import annotations
@@ -65,6 +66,51 @@ def fetch_history(ticker: str, period: str = "1mo") -> list[dict]:
     return points
 
 
+def search_tickers(query: str, limit: int = 8) -> list[dict]:
+    """Return Yahoo ticker suggestions for autocomplete."""
+    import yfinance as yf
+
+    results: list[dict] = []
+    try:
+        # yfinance >= 0.2.x Search API
+        from yfinance import Search
+
+        search = Search(query=query, max_results=limit)
+        quotes = getattr(search, "quotes", None) or []
+        for q in quotes:
+            symbol = (q.get("symbol") or "").strip().upper()
+            if not symbol:
+                continue
+            results.append(
+                {
+                    "symbol": symbol,
+                    "shortName": q.get("shortname") or q.get("shortName"),
+                    "longName": q.get("longname") or q.get("longName"),
+                    "exchange": q.get("exchDisp") or q.get("exchange"),
+                    "quoteType": q.get("quoteType"),
+                }
+            )
+            if len(results) >= limit:
+                break
+    except Exception:
+        # Fallback: treat query as a ticker prefix probe
+        probe = query.strip().upper()
+        if probe:
+            info = yf.Ticker(probe).fast_info
+            last = getattr(info, "last_price", None) or getattr(info, "lastPrice", None)
+            if last is not None:
+                results.append(
+                    {
+                        "symbol": probe,
+                        "shortName": probe,
+                        "longName": probe,
+                        "exchange": None,
+                        "quoteType": "EQUITY",
+                    }
+                )
+    return results
+
+
 def main(argv: list[str]) -> int:
     if len(argv) < 2:
         print(json.dumps({"error": "usage: fetch_yahoo_quote.py TICKER [TICKER...]"}))
@@ -74,6 +120,12 @@ def main(argv: list[str]) -> int:
         ticker = argv[2].upper()
         period = argv[3] if len(argv) > 3 else "1mo"
         print(json.dumps({"ticker": ticker, "history": fetch_history(ticker, period)}))
+        return 0
+
+    if argv[1] == "--search":
+        query = argv[2] if len(argv) > 2 else ""
+        limit = int(argv[3]) if len(argv) > 3 else 8
+        print(json.dumps({"results": search_tickers(query, limit)}))
         return 0
 
     quotes = []

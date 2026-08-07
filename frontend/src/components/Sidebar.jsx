@@ -9,7 +9,7 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
     { id: 'audit', label: 'Audit Trail', icon: ShieldCheck },
     { id: 'scenarios', label: 'Scenarios', icon: Sparkles },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-    { id: 'market', label: 'Market Watch', icon: LineChart },
+    { id: 'market', label: 'Watchlist', icon: LineChart },
   ];
 
   return (

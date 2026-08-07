@@ -2,11 +2,12 @@ package com.portfolio.manager.market;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.portfolio.manager.dto.MarketSearchResultDTO;
+import com.portfolio.manager.dto.TickerSuggestionDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import com.portfolio.manager.dto.MarketSearchResultDTO;
 import yahoofinance.Stock;
 import yahoofinance.YahooFinance;
 import yahoofinance.histquotes.HistoricalQuote;
@@ -35,6 +36,7 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -55,6 +57,8 @@ public class YahooFinanceClient {
     private static final String USER_AGENT =
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
     private static final String CHART_URL = "https://query2.finance.yahoo.com/v8/finance/chart/%s?interval=1d&range=%s";
+    private static final String SEARCH_URL =
+            "https://query1.finance.yahoo.com/v1/finance/search?q=%s&quotesCount=%d&newsCount=0&listsCount=0&enableFuzzyQuery=true";
     private static final int SEARCH_QUOTES_COUNT = 25;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -91,6 +95,30 @@ public class YahooFinanceClient {
                 true,
                 "scripts/fetch_yahoo_quote.py"
         );
+    }
+
+    /**
+     * Suggest valid Yahoo ticker symbols for autocomplete.
+     * Order: Yahoo search API (curl/HTTP) → yfinance helper → local common-ticker fallback.
+     */
+    public List<TickerSuggestionDTO> searchTickers(String query, int limit) {
+        String q = query == null ? "" : query.trim();
+        if (q.length() < 1) {
+            return List.of();
+        }
+        int max = Math.max(1, Math.min(limit <= 0 ? 8 : limit, 15));
+
+        List<TickerSuggestionDTO> fromYahoo = searchTickersViaYahoo(q, max);
+        if (!fromYahoo.isEmpty()) {
+            return fromYahoo;
+        }
+
+        List<TickerSuggestionDTO> fromYfinance = searchTickersViaYfinance(q, max);
+        if (!fromYfinance.isEmpty()) {
+            return fromYfinance;
+        }
+
+        return searchTickersLocalFallback(q, max);
     }
 
     public Optional<YahooQuote> fetchQuote(String tickerSymbol) {
@@ -692,6 +720,167 @@ public class YahooFinanceClient {
         return null;
     }
 
+    private List<TickerSuggestionDTO> searchTickersViaYahoo(String query, int limit) {
+        try {
+            String encoded = URLEncoder.encode(query, StandardCharsets.UTF_8);
+            String url = String.format(Locale.ROOT, SEARCH_URL, encoded, limit);
+            Optional<String> body = fetchViaCurl(url);
+            if (body.isEmpty()) {
+                body = fetchViaHttp(url);
+            }
+            if (body.isEmpty()) {
+                return List.of();
+            }
+            return parseSearchResults(body.get(), limit);
+        } catch (Exception ex) {
+            log.debug("Yahoo ticker search failed for {}: {}", query, ex.getMessage());
+            return List.of();
+        }
+    }
+
+    private List<TickerSuggestionDTO> searchTickersViaYfinance(String query, int limit) {
+        if (!yfinanceFallbackEnabled) {
+            return List.of();
+        }
+        try {
+            Path script = resolveYfinanceScript();
+            String python = resolvePythonCommand();
+            if (script == null || python == null) {
+                return List.of();
+            }
+            throttle();
+            ProcessBuilder pb = new ProcessBuilder(
+                    python, script.toAbsolutePath().toString(), "--search", query, String.valueOf(limit)
+            );
+            pb.redirectErrorStream(true);
+            Process process = pb.start();
+            String body = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8).trim();
+            boolean finished = process.waitFor(20, TimeUnit.SECONDS);
+            if (!finished) {
+                process.destroyForcibly();
+                return List.of();
+            }
+            if (process.exitValue() != 0 || !body.startsWith("{")) {
+                return List.of();
+            }
+            JsonNode results = objectMapper.readTree(body).path("results");
+            if (!results.isArray() || results.isEmpty()) {
+                return List.of();
+            }
+            List<TickerSuggestionDTO> out = new ArrayList<>();
+            for (JsonNode n : results) {
+                String symbol = n.path("symbol").asText("").trim().toUpperCase(Locale.ROOT);
+                if (symbol.isEmpty()) continue;
+                out.add(new TickerSuggestionDTO(
+                        symbol,
+                        n.path("shortName").asText(null),
+                        n.path("longName").asText(null),
+                        n.path("exchange").asText(null),
+                        n.path("quoteType").asText(null)
+                ));
+                if (out.size() >= limit) break;
+            }
+            return out;
+        } catch (Exception ex) {
+            log.debug("yfinance ticker search failed for {}: {}", query, ex.getMessage());
+            return List.of();
+        }
+    }
+
+    private List<TickerSuggestionDTO> parseSearchResults(String body, int limit) throws IOException {
+        JsonNode quotes = objectMapper.readTree(body).path("quotes");
+        if (!quotes.isArray() || quotes.isEmpty()) {
+            return List.of();
+        }
+        Map<String, TickerSuggestionDTO> unique = new LinkedHashMap<>();
+        for (JsonNode n : quotes) {
+            String symbol = n.path("symbol").asText("").trim().toUpperCase(Locale.ROOT);
+            if (symbol.isEmpty() || unique.containsKey(symbol)) continue;
+            String type = n.path("quoteType").asText("");
+            // Prefer equity / ETF / mutual fund style instruments
+            if (!type.isEmpty()
+                    && !(type.equalsIgnoreCase("EQUITY")
+                    || type.equalsIgnoreCase("ETF")
+                    || type.equalsIgnoreCase("MUTUALFUND")
+                    || type.equalsIgnoreCase("INDEX"))) {
+                continue;
+            }
+            unique.put(symbol, new TickerSuggestionDTO(
+                    symbol,
+                    textOrNull(n, "shortname", "shortName"),
+                    textOrNull(n, "longname", "longName"),
+                    textOrNull(n, "exchDisp", "exchange"),
+                    type.isEmpty() ? null : type
+            ));
+            if (unique.size() >= limit) break;
+        }
+        return new ArrayList<>(unique.values());
+    }
+
+    private String textOrNull(JsonNode node, String primary, String fallback) {
+        String value = node.path(primary).asText(null);
+        if (value == null || value.isBlank()) {
+            value = node.path(fallback).asText(null);
+        }
+        return value == null || value.isBlank() ? null : value;
+    }
+
+    private Optional<String> fetchViaHttp(String url) {
+        try {
+            throttle();
+            HttpRequest request = HttpRequest.newBuilder(URI.create(url))
+                    .timeout(Duration.ofSeconds(12))
+                    .header("User-Agent", USER_AGENT)
+                    .header("Accept", "application/json")
+                    .GET()
+                    .build();
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                String body = response.body() == null ? "" : response.body().trim();
+                if (body.startsWith("{")) {
+                    return Optional.of(body);
+                }
+            }
+        } catch (Exception ex) {
+            log.debug("HTTP search fetch failed: {}", ex.getMessage());
+        }
+        return Optional.empty();
+    }
+
+    private List<TickerSuggestionDTO> searchTickersLocalFallback(String query, int limit) {
+        String q = query.toUpperCase(Locale.ROOT);
+        String[][] common = {
+                {"AAPL", "Apple Inc.", "NASDAQ", "EQUITY"},
+                {"MSFT", "Microsoft Corporation", "NASDAQ", "EQUITY"},
+                {"NVDA", "NVIDIA Corporation", "NASDAQ", "EQUITY"},
+                {"GOOGL", "Alphabet Inc. Class A", "NASDAQ", "EQUITY"},
+                {"GOOG", "Alphabet Inc. Class C", "NASDAQ", "EQUITY"},
+                {"AMZN", "Amazon.com Inc.", "NASDAQ", "EQUITY"},
+                {"META", "Meta Platforms Inc.", "NASDAQ", "EQUITY"},
+                {"TSLA", "Tesla Inc.", "NASDAQ", "EQUITY"},
+                {"AMD", "Advanced Micro Devices", "NASDAQ", "EQUITY"},
+                {"NFLX", "Netflix Inc.", "NASDAQ", "EQUITY"},
+                {"JPM", "JPMorgan Chase & Co.", "NYSE", "EQUITY"},
+                {"V", "Visa Inc.", "NYSE", "EQUITY"},
+                {"SPY", "SPDR S&P 500 ETF Trust", "NYSEARCA", "ETF"},
+                {"QQQ", "Invesco QQQ Trust", "NASDAQ", "ETF"},
+                {"VOO", "Vanguard S&P 500 ETF", "NYSEARCA", "ETF"},
+                {"VTI", "Vanguard Total Stock Market ETF", "NYSEARCA", "ETF"},
+                {"BND", "Vanguard Total Bond Market ETF", "NASDAQ", "ETF"},
+                {"IWM", "iShares Russell 2000 ETF", "NYSEARCA", "ETF"},
+                {"DIA", "SPDR Dow Jones Industrial Average ETF", "NYSEARCA", "ETF"},
+                {"GLD", "SPDR Gold Shares", "NYSEARCA", "ETF"},
+        };
+        List<TickerSuggestionDTO> out = new ArrayList<>();
+        for (String[] row : common) {
+            if (row[0].startsWith(q) || row[1].toUpperCase(Locale.ROOT).contains(q)) {
+                out.add(new TickerSuggestionDTO(row[0], row[1], row[1], row[2], row[3]));
+                if (out.size() >= limit) break;
+            }
+        }
+        return out;
+    }
+
     private void throttle() {
         synchronized (rateLock) {
             long now = System.currentTimeMillis();
@@ -794,6 +983,7 @@ public class YahooFinanceClient {
         String searchUrl = "https://query1.finance.yahoo.com/v1/finance/search?q=" + encodedQuery
                 + "&quotesCount=" + SEARCH_QUOTES_COUNT + "&newsCount=0";
 
+        // Curl is the reliable path when Yahoo blocks the Java HTTP/TLS handshake.
         Optional<String> curlBody = fetchViaCurl(searchUrl);
         if (curlBody.isPresent()) {
             return parseSearchResults(curlBody.get());
@@ -844,8 +1034,8 @@ public class YahooFinanceClient {
                     }
                     String shortName = node.path("shortname").asText(null);
                     String longName = node.path("longname").asText(null);
-                    String name = (shortName != null && !shortName.isBlank()) ? shortName
-                            : ((longName != null && !longName.isBlank()) ? longName : symbol);
+                    String name = (shortName != null && !shortName.isBlank()) ? shortName :
+                                  ((longName != null && !longName.isBlank()) ? longName : symbol);
 
                     String exch = node.path("exchDisp").asText(null);
                     if (exch == null || exch.isBlank()) {
@@ -860,7 +1050,7 @@ public class YahooFinanceClient {
                         sector = node.path("sector").asText(null);
                     }
 
-                    list.add(new MarketSearchResultDTO(symbol.toUpperCase(Locale.ROOT), name, exch, assetType, sector));
+                    list.add(new MarketSearchResultDTO(symbol.toUpperCase(), name, exch, assetType, sector));
                 }
             }
         } catch (Exception e) {
@@ -870,21 +1060,14 @@ public class YahooFinanceClient {
     }
 
     private String mapQuoteTypeToAssetType(String quoteType) {
-        if (quoteType == null) {
-            return "STOCKS";
-        }
-        switch (quoteType.toUpperCase(Locale.ROOT)) {
-            case "EQUITY":
-                return "STOCKS";
-            case "ETF":
-                return "ETFS";
-            case "MUTUALFUND":
-                return "MUTUAL_FUNDS";
+        if (quoteType == null) return "STOCKS";
+        switch (quoteType.toUpperCase()) {
+            case "EQUITY": return "STOCKS";
+            case "ETF": return "ETFS";
+            case "MUTUALFUND": return "MUTUAL_FUNDS";
             case "CURRENCY":
-            case "CRYPTOCURRENCY":
-                return "CASH";
-            default:
-                return "STOCKS";
+            case "CRYPTOCURRENCY": return "CASH";
+            default: return "STOCKS";
         }
     }
 }

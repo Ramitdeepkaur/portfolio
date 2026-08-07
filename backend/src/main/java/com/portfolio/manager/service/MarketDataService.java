@@ -3,6 +3,7 @@ package com.portfolio.manager.service;
 import com.portfolio.manager.dto.HistoricalPricePointDTO;
 import com.portfolio.manager.dto.MarketDataDTO;
 import com.portfolio.manager.dto.MarketSearchResultDTO;
+import com.portfolio.manager.dto.TickerSuggestionDTO;
 import com.portfolio.manager.entity.MarketData;
 import com.portfolio.manager.market.MarketDataException;
 import com.portfolio.manager.market.YahooFinanceClient;
@@ -291,6 +292,52 @@ public class MarketDataService {
         if (query == null || query.trim().isEmpty()) {
             return new ArrayList<>();
         }
-        return yahooFinanceClient.searchAssets(query.trim());
+        String term = query.trim();
+        List<MarketSearchResultDTO> results = yahooFinanceClient.searchAssets(term);
+        if (!results.isEmpty()) {
+            return results;
+        }
+        // Yahoo HTTP/curl search is often blocked; fall back to ticker search (yfinance + local).
+        return yahooFinanceClient.searchTickers(term, 8).stream()
+                .map(this::toSearchResult)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    public List<TickerSuggestionDTO> searchTickers(String query, int limit) {
+        return yahooFinanceClient.searchTickers(query, limit);
+    }
+
+    private MarketSearchResultDTO toSearchResult(TickerSuggestionDTO suggestion) {
+        String name = suggestion.getShortName();
+        if (name == null || name.isBlank()) {
+            name = suggestion.getLongName();
+        }
+        if (name == null || name.isBlank()) {
+            name = suggestion.getSymbol();
+        }
+        return new MarketSearchResultDTO(
+                suggestion.getSymbol(),
+                name,
+                suggestion.getExchange(),
+                mapQuoteType(suggestion.getQuoteType()),
+                null);
+    }
+
+    private static String mapQuoteType(String quoteType) {
+        if (quoteType == null || quoteType.isBlank()) {
+            return "STOCKS";
+        }
+        switch (quoteType.trim().toUpperCase(Locale.ROOT)) {
+            case "ETF":
+                return "ETFS";
+            case "MUTUALFUND":
+                return "MUTUAL_FUNDS";
+            case "CURRENCY":
+            case "CRYPTOCURRENCY":
+                return "CASH";
+            case "EQUITY":
+            default:
+                return "STOCKS";
+        }
     }
 }

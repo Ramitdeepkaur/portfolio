@@ -46,6 +46,14 @@ export const api = {
         params: symbols ? { symbols: Array.isArray(symbols) ? symbols.join(',') : symbols } : {},
       })
       .then((res) => res.data),
+  searchTickers: (q, limit = 8) =>
+    client.get('/market/search/tickers', { params: { q, limit } }).then((res) => res.data),
+
+  // Persisted idea watchlist (separate from holdings)
+  getPersistedWatchlist: () => client.get('/watchlist').then((res) => res.data),
+  addWatchlistItem: (data) => client.post('/watchlist', data).then((res) => res.data),
+  removeWatchlistItem: (ticker) =>
+    client.delete(`/watchlist/${encodeURIComponent(ticker)}`).then((res) => res.data),
 
   // Analytics
   getAnalytics: () => client.get('/analytics').then((res) => res.data),
